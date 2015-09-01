@@ -1,4 +1,8 @@
-[![][KurentoImage]][website]
+Примеры:
+
+kurento-chroma - два окошка, пытается вещать из одного в другое с фильтром, фильтр найти не может (наверное надо отдельно ставить)
+kurento-one2many-call - наш основной пример (мастер - вьюверы)
+kurento-one2many-with-plumbers - распределенная версия предыдущего примера, не работает (падает на вью)
 
 Copyright © 2014 Kurento. Licensed under [LGPL License].
 
