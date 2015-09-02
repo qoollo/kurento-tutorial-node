@@ -38,6 +38,8 @@ var app = express();
 
 var idCounter = 0;
 var master = null;
+var masterManager = new MasterManager();
+var kurentoClientManager = new KurentoClientManager();
 var pipeline = null;
 var viewers = {};
 var kurentoClient = null;
@@ -58,15 +60,62 @@ var server = app.listen(port, function() {
 	console.log('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
 });
 
-var wss = new ws.Server({
+var wssForView = new ws.Server({
 	server : server,
 	path : '/call'
 });
+viewSessionIdCounter = new IdCounter();
+
+var wssForControl = new ws.Server({
+    server: server,
+    path: '/control'
+});
+controlSessionIdCounter = new IdCounter();
+
+wssForControl.on('connection', function (ws) {
+
+    var sessionId = controlSessionIdCounter.nextUniqueId;
+
+    console.log('Connection for control received. Session id: ' + sessionId);
+
+    ws.on('error', function (error) {
+        console.log('There was an error in the control-connection №' + sessionId, error);
+    });
+
+    ws.on('close', function () {
+        console.log('Control-connection №' + sessionId + ' closed');
+    });
+
+    ws.on('message', function (_message) {
+        var message = JSON.parse(_message);
+        console.log('Control-connection №' + sessionId + ' received message ', message);
+
+        var response;
+
+        switch (message.action) {
+            case 'AddMaster':
+                if (!!message.streamUrl) {
+                    var id = masterManager.addMaster(new Master(null, message.streamUrl));
+                    response = new ActionResponse(statuses.success, 'Master has been successfully added', id);
+                }
+                else
+                    response = new ActionResponse(statuses.error, 'Message doesn`t contain camera URL', message);
+                break;
+
+            default:
+                response = new ActionResponse(statuses.error, 'Invalid message', message)
+                break;
+        }
+
+        ws.send(JSON.stringify(response));
+    });
+
+})
 
 /*
  * Management of WebSocket messages
  */
-wss.on('connection', function(ws) {
+wssForView.on('connection', function(ws) {
 
 	var sessionId = nextUniqueId();
 
@@ -141,6 +190,11 @@ wss.on('connection', function(ws) {
 /*
  * Definition of functions
  */
+
+
+function addMaster() {
+
+}
 
 // Recover kurentoClient for the first time.
 function getKurentoClient(callback) {
@@ -319,6 +373,214 @@ function stop(id, ws) {
 			viewer.webRtcEndpoint.release();
 		delete viewers[id];
 	}
+}
+
+//Classes:
+
+function IdCounter(startId) {
+    var lastId = (startId != undefined) ? (startId - 1) : 0;
+
+    Object.defineProperties(this, {
+        nextUniqueId: {
+            get: function () {
+                lastId++;
+                return lastId;
+            }
+        },
+        lastId: {
+            get: function () { return lastId }
+        }
+    });
+}
+
+function Master(id, streamUrl) {
+
+    this.id = id;
+
+    this.streamUrl = streamUrl;
+
+    var viewers = [];
+
+    var pipeline = null;
+    var webRtcEndpoint = null;
+
+    this.addViewer = function (viewer) {
+        viewers.push(viewer);
+
+        if (this.isOffline)
+            startStream(); //Not implemented yet. Эта функция должна проставлять pipeline
+    };
+
+    this.removeViewer = function (viewer) {
+        var index = viewers.indexOf(viewer);
+        if (index == -1)
+            return;
+
+        viewers.splice(index, 1);
+
+        if (!viewers.length && this.isOnline)
+            stopStream(); //Not implemented yet. Эта функция должна проставлять pipeline на null
+    };
+
+    Object.defineProperties(this, {
+        status : {
+            get : function () { return !!pipeline ? 'online' : 'offline' }
+        },
+        isOnline: {
+            get: function () { return !!pipeline }
+        },
+        isOffline: {
+            get : function () { return !pipeline }
+        },
+        viewers: {
+            get: function () {return viewers }
+        }
+    });
+
+    var self = this;
+
+    function startStream() {
+        if (self.isOnline) {
+            console.log('WARNING! Trying to start an already running stream');
+            return;
+        }
+
+        function stopProcessWithError(message) {
+            console.log('ERROR! ' + message);
+
+            if (pipeline)
+                pipeline.release();
+
+            pipeline = null;
+
+            if (webRtcEndpoint)
+                webRtcEndpoint.release();
+
+            webRtcEndpoint = null;
+
+            return;
+        }
+
+        var kurentoClient = kurentoClientManager.getAvailableClient();
+        if (!kurentoClient)
+            return stopProcessWithError('Trying to start stream when no one kurento client is exists');
+
+        kurentoClient.client.create('MediaPipeline', function (error, _pipeline) {
+            if (error) 
+                return stopProcessWithError('An error occurred while master №' + self.id + ' trying to create media pieline');
+
+            pipeline = _pipeline;
+            pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
+                if (error)
+                    return stopProcessWithError('An error occurred while master №' + self.id + ' trying to create WebRtc endpoint');
+
+                webRtcEndpoint = _webRtcEndpoint;
+
+                webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) { //тут недопилен sdp
+                    if (error)
+                        return stopProcessWithError('An error occurred while WebRtc endpoint of master №' + self.id + 'trying to process offer'); //???
+
+                    //где-то тут недопил функциональности.
+
+                    //callback(null, sdpAnswer);
+                });
+            })
+        })
+    }
+}
+
+function MasterManager() {
+
+    var masters = [];
+
+    var idCounter = new IdCounter();
+
+    this.addMaster = function (master) {
+        master.id = idCounter.nextUniqueId;
+        masters.push(master);
+
+        return master.id;
+    }
+
+    this.getMasterById = function (id) {
+        return masters.filter(function (master) { return master.id === id })[0];
+    }
+
+    Object.defineProperties(this, {
+        masters: {
+            get: function () { return masters }
+        },
+    });
+
+}
+
+function KurentoClientManager() {
+
+    var clientCounter = new IdCounter();
+
+    function KurentoClientWrapper(id, uri, client) {
+        this.id = id;
+        this.uri = uri;
+        this.client = client;
+
+        //It is mean connection from current app:
+        var masterConnectionCount = 0;
+        var viewerConnectionCount = 0;
+        this.connectionCounter = {
+            processMasterConnected: function () { masterConnectionCount++ },
+            processMasterDisconnected: function () { masterConnectionCount-- },
+            processVieverConnected: function () { viewerConnectionCount++ },
+            processVieverDisconected: function () { viewerConnectionCount-- },
+            getConnectionCount: function () { return (masterConnectionCount + viewerConnectionCount)}
+        }
+        
+    }
+
+    var clients = []
+
+    this.addClient = function (clientUri, onSuccess, onError) {
+        var existingClient = clients.filter(function (client) { return client.uri === clientUri })[0];
+        
+        if (existingClient)
+            onSuccess(existingClient, 'The client with the specified Uri already exists');
+        else 
+            kurento(clientUri, function (error, kurentoClient) {
+                if (error) 
+                    return onError(error)
+
+                var innerKurrentoClient = new KurentoClientWrapper(clientCounter.nextUniqueId, clientUri, kurentoClient);
+                clients.push(innerKurrentoClient);
+                onSuccess(innerKurrentoClient);
+            });
+    }
+
+    this.getClientById = function (id) {
+        return clients.filter(function (client) { return client.id === id })[0];
+    }
+
+    this.getAvailableClient = function () {
+        return clients.sort(function (a, b) { return a.connectionCounter.getConnectionCount() - b.connectionCounter.getConnectionCount() })[0];
+    }
+
+    this.removeClientById = function (id) {
+        var client = clients.filter(function (client) { return client.id === id })[0];
+
+        if (!client)
+            return;
+
+        this.viewers.splice(clients.indexOf(client), 1);
+    }
+}
+
+function ActionResponse(status, message, data) {
+    this.status = status;
+    this.message = message;
+    this.data = data;
+}
+
+var statuses = {
+    success: 'Success',
+    error : 'Error'
 }
 
 app.use(express.static(path.join(__dirname, 'static')));
