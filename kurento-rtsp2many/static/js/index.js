@@ -42,9 +42,9 @@ window.onload = function() {
 	    }
 	}
 
-	document.getElementById('call').onclick(onMasterClick);
-	document.getElementById('viewer').onclick(onViewerClick);
-	document.getElementById('terminate').onclick(onTerminateClick);
+	document.getElementById('call').onclick = onMasterClick;
+	document.getElementById('viewer').onclick = onViewerClick;
+	document.getElementById('terminate').onclick = onTerminateClick;
 }
 
 window.onbeforeunload = function () {
