@@ -102,7 +102,6 @@ wssForControl.on('connection', function (ws) {
             case 'AddMaster':
                 console.log('AddMaster command');
                 break;
-                //var senderPeer = kurentoUtils.WebRtcPeerSendonly;
                 if (!!message.streamUrl) {
                     var id = masterManager.addMaster(new Master(null, message.streamUrl, null));
                     response = new ActionResponse(statuses.success, 'Master has been successfully added', id);

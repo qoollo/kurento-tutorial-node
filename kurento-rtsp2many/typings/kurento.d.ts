@@ -433,81 +433,57 @@ declare module Kurento.Utils {
      */
     export interface IWebRtcPeer extends NodeJS.EventEmitter {
 
-        peerConnection;
 
-        remoteVideo;
-
-        localVideo;
-
-        currentFrame: ImageData;
+        //=================================
 
         /**
-         * Callback function invoked when an ICE candidate is received. Developers are
-         * expected to invoke this function in order to complete the SDP negotiation.
-         *
-         * @param iceCandidate - Literal object with the ICE candidate description
-         * @param callback - Called when the ICE candidate has been added.
+         * @description This method creates the RTCPeerConnection object taking into
+         *              account the properties received in the constructor. It starts
+         *              the SDP negotiation process: generates the SDP offer and invokes
+         *              the onsdpoffer callback. This callback is expected to send the
+         *              SDP offer, in order to obtain an SDP answer from another peer.
          */
-        addIceCandidate(iceCandidate, callback);
-
-        generateOffer(callback);
-
-        getLocalSessionDescriptor();
-
-        getRemoteSessionDescriptor();
-
-        showLocalVideo(): void;
-
-        /**
-         * Callback function invoked when a SDP answer is received. Developers are
-         * expected to invoke this function in order to complete the SDP negotiation.
-         *
-         * @param sdpAnswer - Description of sdpAnswer
-         * @param callback - Called when the remote description has been set
-         *  successfully.
-         */
-        processAnswer(sdpAnswer, callback): void;
-
-        /**
-         * Callback function invoked when a SDP offer is received. Developers are
-         * expected to invoke this function in order to complete the SDP negotiation.
-         *
-         * @param sdpOffer - Description of sdpOffer
-         * @param callback - Called when the remote description has been set
-         *  successfully.
-         */
-        processOffer(sdpOffer, callback): void;
-
-        enabled: boolean;
-
-        audioEnabled: boolean;
-
-        videoEnabled: boolean;
-
-        getLocalStream(index: number);
-
-        getRemoteStream(index: number);
+        start(server, options): void;
 
         /**
          * This method frees the resources used by WebRtcPeer.
          */
         dispose(): void;
+
+        userMediaConstraints: {
+            audio: boolean,
+            video: {
+                mandatory: {
+                    maxWidth: number,
+                    maxFrameRate: number,
+                    minFrameRate: number
+                }
+            }
+        };
+
+        processSdpAnswer(sdpAnswer, successCallback);
+
+        server: {
+            iceServers: any
+        }
+
+        options: {
+            optional: [{
+                DtlsSrtpKeyAgreement: boolean
+            }]
+        };
     }
 
-    export interface IWebRtcPeerRecvonly extends IWebRtcPeer {
-    }
-
-    export interface IWebRtcPeerSendonly extends IWebRtcPeer {
-    }
-
-    export interface IWebRtcPeerSendrecv extends IWebRtcPeer {
+    export interface IWebRtcPeerCtor {
+        new (): IWebRtcPeer;
+        start(mode: string, localVideo: HTMLVideoElement, remoteVideo: HTMLVideoElement, onSdp, onError, mediaConstraints, server, options);
+        startRecvOnly(remoteVideo: HTMLVideoElement, onSdp, onError, mediaConstraints, server, options);
+        startSendOnly(localVideo: HTMLVideoElement, onSdp, onError, mediaConstraints, server, options);
+        startSendRecv(localVideo: HTMLVideoElement, remoteVideo: HTMLVideoElement, onSdp, onError, mediaConstraints, server, options);
     }
 
     export interface IKurentoUtils {
-        bufferizeCandidates(pc, onerror): (candidate, callback) => void;
-        WebRtcPeerRecvonly: IWebRtcPeerRecvonly;
-        WebRtcPeerSendonly: IWebRtcPeerSendonly;
-        WebRtcPeerSendrecv: IWebRtcPeerSendrecv;
+        WebRtcPeer: IWebRtcPeerCtor;
     }
 
 }
