@@ -8,7 +8,7 @@
   "dependencies": {
     "express": "~4.12.2",
     "kurento-client": "5.1.0",
-    "kurento-utils": "^6.1.0",
+    "kurento-utils": "5.1.0",
     "minimist": "^1.1.0",
     "uuid": "^2.0.1",
     "ws": "~0.7.1"

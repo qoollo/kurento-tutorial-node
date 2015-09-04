@@ -231,6 +231,11 @@
   <ItemGroup>
     <TypeScriptCompile Include="server.ts" />
     <TypeScriptCompile Include="server\IdCounter.ts" />
+    <TypeScriptCompile Include="server\KurentoClientManager.ts" />
+    <TypeScriptCompile Include="server\Master.ts" />
+    <TypeScriptCompile Include="server\MasterManager.ts" />
+    <TypeScriptCompile Include="typings\es6-promise.d.ts" />
+    <TypeScriptCompile Include="typings\kurento.d.ts" />
     <TypeScriptCompile Include="typings\node.d.ts" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
