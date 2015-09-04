@@ -2,9 +2,10 @@
 
 class Master {
 
-    constructor(id: number, streamUrl: string) {
+    constructor(id: number, streamUrl: string, pipeline: Kurento.IMediaPipeline) {
         this._id = id;
         this._streamUrl = streamUrl;
+        this._pipeline = pipeline;
     }
 
     get id(): number {
@@ -27,7 +28,7 @@ class Master {
         this._viewers.push(viewer);
 
         if (this.isOffline)
-            this.startStream(); //Not implemented yet. Эта функция должна проставлять pipeline
+            this.startStream(null); //Not implemented yet. Эта функция должна проставлять pipeline
     };
 
     removeViewer(viewer) {
@@ -57,55 +58,59 @@ class Master {
         return this._viewers;
     }
     
-    startStream() {
+    startStream(callback: (err, sdpAnswer) => void) {
         if (this.isOnline) {
-            console.log('WARNING! Trying to start an already running stream');
+            console.warn('WARNING! Trying to start an already running stream');
             return;
         }
 
-        function stopProcessWithError(message) {
-            console.log('ERROR! ' + message);
-
-            if (pipeline)
-                pipeline.release();
-
-            pipeline = null;
-
-            if (this.webRtcEndpoint)
-                this.webRtcEndpoint.release();
-
-            this.webRtcEndpoint = null;
-
-            return;
-        }
-
-        var kurentoClient = kurentoClientManager.getAvailableClient();
+        var kurentoClient = kurentoClientManager.findAvailableClient();
         if (!kurentoClient)
-            return stopProcessWithError('Trying to start stream when no one kurento client is exists');
+            return this.stopProcessWithError('Trying to start stream when no one kurento client is exists');
 
-        kurentoClient.client.create('MediaPipeline', function (error, _pipeline) {
+        kurentoClient.client.create('MediaPipeline', (error, pipeline) => {
             if (error)
-                return stopProcessWithError('An error occurred while master №' + this.id + ' trying to create media pieline');
-
-            pipeline = _pipeline;
-            pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
-                if (error)
-                    return stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint');
-
-                this.webRtcEndpoint = _webRtcEndpoint;
-
-                var sdp = 'WAAAT';
-                throw new Error('тут не допилен sdp')
-                this.webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) {
-                    if (error)
-                        return stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer'); //???
-
-                    //где-то тут недопил функциональности.
-
-                    //callback(null, sdpAnswer);
-                });
-            })
+                return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create media pieline');
+            this.onPipelineCreated(pipeline, callback);
         })
+    }
+
+    private onPipelineCreated(pipeline: Kurento.IMediaObject, callback: (err, sdpAnswer) => void) {
+
+        this._pipeline = pipeline;
+        this._pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
+            if (error)
+                return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint');
+
+            this.webRtcEndpoint = _webRtcEndpoint;
+
+            var sdp = 'WAAAT';
+            throw new Error('тут не допилен sdp')
+            this.webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) {
+                if (error)
+                    return this.stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer'); //???
+
+                //где-то тут недопил функциональности.
+
+                callback(null, sdpAnswer);
+            });
+        });
+    }
+
+    private stopProcessWithError(message: string) {
+        console.log('ERROR! ' + message);
+
+        if (this._pipeline)
+            this._pipeline.release();
+
+        this._pipeline = null;
+
+        if (this._webRtcEndpoint)
+            this._webRtcEndpoint.release();
+
+        this._webRtcEndpoint = null;
+
+        return message;
     }
 
     stopStream() {

@@ -423,3 +423,91 @@
         create(type, params, callback: (error: Error, mediaObject: IMediaObject) => void): Promise<IMediaObject>;
     }
 }
+
+//  https://github.com/Kurento/kurento-utils-js/
+declare module Kurento.Utils {
+
+    /**
+     * Wrapper object of an RTCPeerConnection. This object is aimed to simplify the
+     * development of WebRTC-based applications.
+     */
+    export interface IWebRtcPeer extends NodeJS.EventEmitter {
+
+        peerConnection;
+
+        remoteVideo;
+
+        localVideo;
+
+        currentFrame: ImageData;
+
+        /**
+         * Callback function invoked when an ICE candidate is received. Developers are
+         * expected to invoke this function in order to complete the SDP negotiation.
+         *
+         * @param iceCandidate - Literal object with the ICE candidate description
+         * @param callback - Called when the ICE candidate has been added.
+         */
+        addIceCandidate(iceCandidate, callback);
+
+        generateOffer(callback);
+
+        getLocalSessionDescriptor();
+
+        getRemoteSessionDescriptor();
+
+        showLocalVideo(): void;
+
+        /**
+         * Callback function invoked when a SDP answer is received. Developers are
+         * expected to invoke this function in order to complete the SDP negotiation.
+         *
+         * @param sdpAnswer - Description of sdpAnswer
+         * @param callback - Called when the remote description has been set
+         *  successfully.
+         */
+        processAnswer(sdpAnswer, callback): void;
+
+        /**
+         * Callback function invoked when a SDP offer is received. Developers are
+         * expected to invoke this function in order to complete the SDP negotiation.
+         *
+         * @param sdpOffer - Description of sdpOffer
+         * @param callback - Called when the remote description has been set
+         *  successfully.
+         */
+        processOffer(sdpOffer, callback): void;
+
+        enabled: boolean;
+
+        audioEnabled: boolean;
+
+        videoEnabled: boolean;
+
+        getLocalStream(index: number);
+
+        getRemoteStream(index: number);
+
+        /**
+         * This method frees the resources used by WebRtcPeer.
+         */
+        dispose(): void;
+    }
+
+    export interface IWebRtcPeerRecvonly extends IWebRtcPeer {
+    }
+
+    export interface IWebRtcPeerSendonly extends IWebRtcPeer {
+    }
+
+    export interface IWebRtcPeerSendrecv extends IWebRtcPeer {
+    }
+
+    export interface IKurentoUtils {
+        bufferizeCandidates(pc, onerror): (candidate, callback) => void;
+        WebRtcPeerRecvonly: IWebRtcPeerRecvonly;
+        WebRtcPeerSendonly: IWebRtcPeerSendonly;
+        WebRtcPeerSendrecv: IWebRtcPeerSendrecv;
+    }
+
+}

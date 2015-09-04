@@ -27,7 +27,7 @@ class KurentoClientManager {
         return this.clients.filter(c => c.id === id)[0];
     }
 
-    getAvailableClient() {
+    findAvailableClient() {
         return this.clients.sort((a, b) => a.connectionCounter.getConnectionCount() - b.connectionCounter.getConnectionCount())[0];
     }
 

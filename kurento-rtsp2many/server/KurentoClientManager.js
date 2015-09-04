@@ -21,7 +21,7 @@ var KurentoClientManager = (function () {
     KurentoClientManager.prototype.getClientById = function (id) {
         return this.clients.filter(function (c) { return c.id === id; })[0];
     };
-    KurentoClientManager.prototype.getAvailableClient = function () {
+    KurentoClientManager.prototype.findAvailableClient = function () {
         return this.clients.sort(function (a, b) { return a.connectionCounter.getConnectionCount() - b.connectionCounter.getConnectionCount(); })[0];
     };
     KurentoClientManager.prototype.removeClientById = function (id) {

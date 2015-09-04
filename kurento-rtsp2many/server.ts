@@ -24,6 +24,7 @@ var ws = require('ws');
 var minimist = require('minimist');
 var url = require('url');
 var kurento = require('kurento-client');
+var kurentoUtils: Kurento.Utils.IKurentoUtils = require('kurento-utils');
 
 var argv = minimist(process.argv.slice(2),
     {
@@ -99,8 +100,11 @@ wssForControl.on('connection', function (ws) {
 
         switch (message.action) {
             case 'AddMaster':
+                console.log('AddMaster command');
+                break;
+                //var senderPeer = kurentoUtils.WebRtcPeerSendonly;
                 if (!!message.streamUrl) {
-                    var id = masterManager.addMaster(new Master(null, message.streamUrl));
+                    var id = masterManager.addMaster(new Master(null, message.streamUrl, null));
                     response = new ActionResponse(statuses.success, 'Master has been successfully added', id);
                 }
                 else
