@@ -29,10 +29,10 @@ window.onload = function() {
 
 	    switch (parsedMessage.id) {
 	        case 'masterResponse':
-	            masterResponse(parsedMessage);
+	            handleMasterResponse(parsedMessage);
 	            break;
 	        case 'viewerResponse':
-	            viewerResponse(parsedMessage);
+	            handleViewerResponse(parsedMessage);
 	            break;
 	        case 'stopCommunication':
 	            dispose();
@@ -41,6 +41,10 @@ window.onload = function() {
 	            console.error('Unrecognized message', parsedMessage);
 	    }
 	}
+
+	document.getElementById('call').onclick(onMasterClick);
+	document.getElementById('viewer').onclick(onViewerClick);
+	document.getElementById('terminate').onclick(onTerminateClick);
 }
 
 window.onbeforeunload = function () {
@@ -48,7 +52,7 @@ window.onbeforeunload = function () {
 	    ws.close();
 }
 
-function masterResponse(message) {
+function handleMasterResponse(message) {
 	if (message.response != 'accepted') {
 		var errorMsg = message.message ? message.message : 'Unknow error';
 		console.info('Call not accepted for the following reason: ' + errorMsg);
@@ -58,7 +62,7 @@ function masterResponse(message) {
 	}
 }
 
-function viewerResponse(message) {
+function handleViewerResponse(message) {
 	if (message.response != 'accepted') {
 		var errorMsg = message.message ? message.message : 'Unknow error';
 		console.info('Call not accepted for the following reason: ' + errorMsg);
@@ -68,7 +72,7 @@ function viewerResponse(message) {
 	}
 }
 
-function master() {
+function onMasterClick() {
 	if (!webRtcPeer) {
 		showSpinner(video);
 
@@ -80,9 +84,11 @@ function master() {
 			sendMessage(message);
 		});
 	}
+
+	return false;
 }
 
-function viewer() {
+function onViewerClick() {
 	if (!webRtcPeer) {
 		showSpinner(video);
 
@@ -94,14 +100,18 @@ function viewer() {
 			sendMessage(message);
 		});
 	}
+
+	return false;
 }
 
-function stop() {
+function onTerminateClick() {
 	var message = {
 		id : 'stop'
 	}
 	sendMessage(message);
 	dispose();
+
+	return false;
 }
 
 function dispose() {
