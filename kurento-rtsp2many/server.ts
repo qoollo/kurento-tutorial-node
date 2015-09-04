@@ -1,4 +1,5 @@
 ﻿/// <reference path="server/IdCounter.ts" />
+/// <reference path="server/Master.ts" />
 
 /*
  * (C) Copyright 2014 Kurento (http://kurento.org/)
@@ -380,108 +381,6 @@ function stop(id, ws) {
 }
 
 //Classes:
-
-function Master(id, streamUrl) {
-
-    this.id = id;
-
-    this.streamUrl = streamUrl;
-
-    var viewers = [];
-
-    var pipeline = null;
-    var webRtcEndpoint = null;
-
-    this.addViewer = function (viewer) {
-        viewers.push(viewer);
-
-        if (this.isOffline)
-            startStream(); //Not implemented yet. Эта функция должна проставлять pipeline
-    };
-
-    this.removeViewer = function (viewer) {
-        var index = viewers.indexOf(viewer);
-        if (index == -1)
-            return;
-
-        viewers.splice(index, 1);
-
-        if (!viewers.length && this.isOnline)
-            stopStream(); 
-    };
-
-    Object.defineProperties(this, {
-        status: {
-            get: function () { return !!pipeline ? 'online' : 'offline' }
-        },
-        isOnline: {
-            get: function () { return !!pipeline }
-        },
-        isOffline: {
-            get: function () { return !pipeline }
-        },
-        viewers: {
-            get: function () { return viewers }
-        }
-    });
-
-    var self = this;
-
-    function startStream() {
-        if (self.isOnline) {
-            console.log('WARNING! Trying to start an already running stream');
-            return;
-        }
-
-        function stopProcessWithError(message) {
-            console.log('ERROR! ' + message);
-
-            if (pipeline)
-                pipeline.release();
-
-            pipeline = null;
-
-            if (webRtcEndpoint)
-                webRtcEndpoint.release();
-
-            webRtcEndpoint = null;
-
-            return;
-        }
-
-        var kurentoClient = kurentoClientManager.getAvailableClient();
-        if (!kurentoClient)
-            return stopProcessWithError('Trying to start stream when no one kurento client is exists');
-
-        kurentoClient.client.create('MediaPipeline', function (error, _pipeline) {
-            if (error)
-                return stopProcessWithError('An error occurred while master №' + self.id + ' trying to create media pieline');
-
-            pipeline = _pipeline;
-            pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
-                if (error)
-                    return stopProcessWithError('An error occurred while master №' + self.id + ' trying to create WebRtc endpoint');
-
-                webRtcEndpoint = _webRtcEndpoint;
-
-                var sdp = 'WAAAT';
-                throw new Error('тут не допилен sdp')
-                webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) {
-                    if (error)
-                        return stopProcessWithError('An error occurred while WebRtc endpoint of master №' + self.id + 'trying to process offer'); //???
-
-                    //где-то тут недопил функциональности.
-
-                    //callback(null, sdpAnswer);
-                });
-            })
-        })
-    }
-
-    function stopStream() {
-        throw new Error('Not implemented yet. Эта функция должна проставлять pipeline на null');
-    }
-}
 
 function MasterManager() {
 
