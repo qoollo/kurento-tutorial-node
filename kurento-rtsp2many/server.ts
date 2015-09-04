@@ -1,5 +1,7 @@
 ﻿/// <reference path="server/IdCounter.ts" />
 /// <reference path="server/Master.ts" />
+/// <reference path="server/MasterManager.ts" />
+/// <reference path="server/KurentoClientManager.ts" />
 
 /*
  * (C) Copyright 2014 Kurento (http://kurento.org/)
@@ -382,88 +384,9 @@ function stop(id, ws) {
 
 //Classes:
 
-function MasterManager() {
 
-    var masters = [];
 
-    var idCounter = new IdCounter();
 
-    this.addMaster = function (master) {
-        master.id = idCounter.nextUniqueId;
-        masters.push(master);
-
-        return master.id;
-    }
-
-    this.getMasterById = function (id) {
-        return masters.filter(function (master) { return master.id === id })[0];
-    }
-
-    Object.defineProperties(this, {
-        masters: {
-            get: function () { return masters }
-        },
-    });
-
-}
-
-function KurentoClientManager() {
-
-    var clientCounter = new IdCounter();
-
-    function KurentoClientWrapper(id, uri, client) {
-        this.id = id;
-        this.uri = uri;
-        this.client = client;
-
-        //It is mean connection from current app:
-        var masterConnectionCount = 0;
-        var viewerConnectionCount = 0;
-        this.connectionCounter = {
-            processMasterConnected: function () { masterConnectionCount++ },
-            processMasterDisconnected: function () { masterConnectionCount-- },
-            processVieverConnected: function () { viewerConnectionCount++ },
-            processVieverDisconected: function () { viewerConnectionCount-- },
-            getConnectionCount: function () { return (masterConnectionCount + viewerConnectionCount) }
-        }
-
-    }
-
-    var clients = []
-
-    this.addClient = function (clientUri, onSuccess, onError) {
-        var existingClient = clients.filter(function (client) { return client.uri === clientUri })[0];
-
-        if (existingClient)
-            onSuccess(existingClient, 'The client with the specified Uri already exists');
-        else
-            kurento(clientUri, function (error, kurentoClient) {
-                if (error)
-                    return onError(error)
-
-                var innerKurrentoClient = new KurentoClientWrapper(clientCounter.nextUniqueId, clientUri, kurentoClient);
-                clients.push(innerKurrentoClient);
-                onSuccess(innerKurrentoClient);
-            });
-    }
-
-    this.getClientById = function (id) {
-        return clients.filter(function (client) { return client.id === id })[0];
-    }
-
-    this.getAvailableClient = function () {
-        return clients.sort(function (a, b) { return a.connectionCounter.getConnectionCount() - b.connectionCounter.getConnectionCount() })[0];
-    }
-
-    this.removeClientById = function (id) {
-        var client = clients.filter(function (client) { return client.id === id })[0];
-
-        if (!client)
-            return;
-
-        this.viewers.splice(clients.indexOf(client), 1);
-    }
-}
 
 function ActionResponse(status, message, data) {
     this.status = status;
