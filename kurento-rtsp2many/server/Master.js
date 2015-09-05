@@ -1,8 +1,9 @@
 var Master = (function () {
     function Master(id, streamUrl, pipeline) {
         this._viewers = [];
-        this._pipeline = null;
+        this._pipeline /* : Kurento.IMediaObject*/ = null;
         this._webRtcEndpoint = null;
+        this._webRtcPeer = null;
         this._id = id;
         this._streamUrl = streamUrl;
         this._pipeline = pipeline;
@@ -24,7 +25,7 @@ var Master = (function () {
     Master.prototype.addViewer = function (viewer) {
         this._viewers.push(viewer);
         if (this.isOffline)
-            this.startStream(null); //Not implemented yet. Эта функция должна проставлять pipeline
+            this.startStream(null);
     };
     ;
     Master.prototype.removeViewer = function (viewer) {
@@ -70,43 +71,56 @@ var Master = (function () {
             console.warn('WARNING! Trying to start an already running stream');
             return;
         }
-        var kurentoClient = kurentoClientManager.findAvailableClient();
-        if (!kurentoClient)
-            return this.stopProcessWithError('Trying to start stream when no one kurento client is exists');
-        kurentoClient.client.create('MediaPipeline', function (error, pipeline) {
-            if (error)
-                return _this.stopProcessWithError('An error occurred while master №' + _this.id + ' trying to create media pieline');
-            _this.onPipelineCreated(pipeline, callback);
-        });
-    };
-    Master.prototype.onPipelineCreated = function (pipeline, callback) {
-        this._pipeline = pipeline;
-        this._pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
-            if (error)
-                return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint');
-            this.webRtcEndpoint = _webRtcEndpoint;
-            var sdp = 'WAAAT';
-            throw new Error('тут не допилен sdp');
-            this.webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) {
+        //TODO: add more validation for every step! 
+        //TODO in future: use promise.
+        var onOffer = function (sdpOffer) {
+            var kurentoClient = kurentoClientManager.findAvailableClient();
+            if (!kurentoClient)
+                return _this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
+            kurentoClient.client.create('MediaPipeline', function (error, pipeline) {
                 if (error)
-                    return this.stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer'); //???
-                //где-то тут недопил функциональности.
-                callback(null, sdpAnswer);
+                    return _this.stopStartStreamProcessWithError('An error occurred while master №' + _this.id + ' trying to create media pieline', error);
+                _this._pipeline = pipeline;
+                _this._pipeline.create("PlayerEndpoint", { uri: _this._streamUrl }, function (error, player) {
+                    if (error)
+                        return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create endpoint player', error);
+                    this._pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
+                        if (error)
+                            return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint', error);
+                        this.webRtcEndpoint = _webRtcEndpoint;
+                        this.webRtcEndpoint.processOffer(sdpOffer, function (error, sdpAnswer) {
+                            if (error)
+                                return this.stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer', error);
+                            this._webRtcPeer.processSdpAnswer(sdpAnswer);
+                            callback(null, sdpAnswer);
+                        });
+                    });
+                });
             });
-        });
+        };
+        this._webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly({}, onOffer, function (error) { _this.stopStartStreamProcessWithError('An error occurred while master №' + _this.id + ' trying to create WebRTC peer', error); }, null, null, null);
     };
-    Master.prototype.stopProcessWithError = function (message) {
-        console.log('ERROR! ' + message);
+    Master.prototype.stopStartStreamProcessWithError = function (message, error) {
+        if (error === void 0) { error = null; }
+        console.log('ERROR! ' + message, error || '');
+        this.disposeMasterMediaObjects();
+        return message;
+    };
+    Master.prototype.stopStream = function () {
+        throw new Error('Not implemented yet. Эта функция должна проставлять pipeline на null');
+        //закрыть вьюверы тут
+        this.disposeMasterMediaObjects();
+    };
+    Master.prototype.disposeMasterMediaObjects = function () {
+        if (this._webRtcPeer)
+            this._webRtcPeer.dispose();
+        this._webRtcPeer = null;
         if (this._pipeline)
             this._pipeline.release();
         this._pipeline = null;
         if (this._webRtcEndpoint)
             this._webRtcEndpoint.release();
         this._webRtcEndpoint = null;
-        return message;
-    };
-    Master.prototype.stopStream = function () {
-        throw new Error('Not implemented yet. Эта функция должна проставлять pipeline на null');
     };
     return Master;
 })();

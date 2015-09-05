@@ -20,15 +20,17 @@ class Master {
 
     _viewers: Object[] = [];
 
-    private _pipeline = null;
+    private _pipeline /* : Kurento.IMediaObject*/ = null;
 
     private _webRtcEndpoint = null;
+
+    private _webRtcPeer = null;
 
     addViewer(viewer) {
         this._viewers.push(viewer);
 
         if (this.isOffline)
-            this.startStream(null); //Not implemented yet. Эта функция должна проставлять pipeline
+            this.startStream(null);
     };
 
     removeViewer(viewer) {
@@ -64,41 +66,67 @@ class Master {
             return;
         }
 
-        var kurentoClient = kurentoClientManager.findAvailableClient();
-        if (!kurentoClient)
-            return this.stopProcessWithError('Trying to start stream when no one kurento client is exists');
 
-        kurentoClient.client.create('MediaPipeline', (error, pipeline) => {
-            if (error)
-                return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create media pieline');
-            this.onPipelineCreated(pipeline, callback);
-        })
+        //TODO: add more validation for every step! 
+        //TODO in future: use promise.
+        var onOffer = (sdpOffer: string) => {
+            var kurentoClient = kurentoClientManager.findAvailableClient();
+
+            if (!kurentoClient) return this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
+
+            kurentoClient.client.create('MediaPipeline', (error, pipeline) => {
+                if (error) return this.stopStartStreamProcessWithError('An error occurred while master №' + this.id + ' trying to create media pieline', error);
+
+                this._pipeline = pipeline;
+
+                this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, function (error, player) {
+                    if (error) return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create endpoint player', error);
+
+                    this._pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
+                        if (error) return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint', error);
+
+                        this.webRtcEndpoint = _webRtcEndpoint;
+
+                        this.webRtcEndpoint.processOffer(sdpOffer, function (error, sdpAnswer) {
+                            if (error) return this.stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer', error); 
+
+                            this._webRtcPeer.processSdpAnswer(sdpAnswer);
+                            callback(null, sdpAnswer);
+                        });
+                    });
+                })
+            })
+        }
+
+        this._webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(
+            <HTMLVideoElement>{},
+            onOffer,
+            (error) => { this.stopStartStreamProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRTC peer', error) },
+            null, null, null);
     }
 
-    private onPipelineCreated(pipeline: Kurento.IMediaObject, callback: (err, sdpAnswer) => void) {
+    private stopStartStreamProcessWithError(message: string, error: any = null) {
+        console.log('ERROR! ' + message, error || '');
 
-        this._pipeline = pipeline;
-        this._pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
-            if (error)
-                return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint');
+        this.disposeMasterMediaObjects();
 
-            this.webRtcEndpoint = _webRtcEndpoint;
-
-            var sdp = 'WAAAT';
-            throw new Error('тут не допилен sdp')
-            this.webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) {
-                if (error)
-                    return this.stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer'); //???
-
-                //где-то тут недопил функциональности.
-
-                callback(null, sdpAnswer);
-            });
-        });
+        return message;
     }
 
-    private stopProcessWithError(message: string) {
-        console.log('ERROR! ' + message);
+    stopStream() {
+
+        throw new Error('Not implemented yet. Эта функция должна проставлять pipeline на null');
+
+        //закрыть вьюверы тут
+
+        this.disposeMasterMediaObjects();
+    }
+
+    disposeMasterMediaObjects() {
+        if (this._webRtcPeer)
+            this._webRtcPeer.dispose();
+
+        this._webRtcPeer = null;
 
         if (this._pipeline)
             this._pipeline.release();
@@ -109,11 +137,5 @@ class Master {
             this._webRtcEndpoint.release();
 
         this._webRtcEndpoint = null;
-
-        return message;
-    }
-
-    stopStream() {
-        throw new Error('Not implemented yet. Эта функция должна проставлять pipeline на null');
     }
 }
