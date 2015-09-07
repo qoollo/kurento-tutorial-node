@@ -64,7 +64,13 @@ function VideoWithUrlInput(videoElement, getUrlFunc) {
     var streamingManager = new RtspStreamingManager();
 }
 
-function Sample() {
+
+/**
+ * @class
+ * 
+ * @param {HTMLElement} sampleContainer
+ */
+function Sample(sampleContainer) {
 
     var videosWithUrls = [],
         startResponses = [],
