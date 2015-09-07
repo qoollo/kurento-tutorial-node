@@ -22,7 +22,7 @@
 </head>
 <body>
 
-    <div class="container-fluid">
+    <div id="sample-1" class="container-fluid">
         <div class="row">
             <h1>
                 Пример 1. Воспроизведение RTSP потока.
@@ -41,7 +41,7 @@
             <div class="col-md-6">
                 <input id="info" class="form-control" value="Здесь будет информация о ходе процесса..." disabled />
 
-                <video id="video" ></video>
+                <video id="video"></video>
 
                 <input id="rtsp" class="form-control" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
                 <input id="kurento" class="form-control" placeholder="Введите адрес куренто-серера" value="10.5.6.119">
@@ -50,17 +50,21 @@
                 <ul id="log-cont"></ul>
             </div>
         </div>
-        <hr />
-
+    </div>
+    <hr />
+    <div id="sample-2" class="container-fluid">
         <div class="row">
             <h1>
                 Пример 2. Воспроизведение 4 RTSP потоков.
 
                 <spn class="btn-group">
-                    <button id="start-2" class="btn btn-lg btn-success">
+                    <button id="start-2" class="btn btn-lg btn-success btn-start">
                         <span class="glyphicon glyphicon-play"></span> Старт
                     </button>
-                    <button id="stop-2" class="btn btn-lg btn-danger" disabled>
+                    <button id="stop-2" class="btn btn-lg btn-default btn-pause" disabled>
+                        <span class="glyphicon glyphicon-pause"></span> Пауза
+                    </button>
+                    <button id="stop-2" class="btn btn-lg btn-danger btn-stop" disabled>
                         <span class="glyphicon glyphicon-stop"></span> Стоп
                     </button>
                 </spn>
