@@ -112,8 +112,9 @@ function Sample() {
         }
         Promise.all(promises)
             .then(
-                function (response) {
-                    startResponses.push(response);
+                function (responses) {
+                    for (var i = 0; i < responses.length; i++)
+                        startResponses.push(responses[i]);
                     stopButton.disabled = false;
                 },
                 function (error) {

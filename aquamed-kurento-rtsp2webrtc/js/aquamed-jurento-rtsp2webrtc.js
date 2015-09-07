@@ -79,7 +79,8 @@ function RtspStreamingManager() {
 
                             responseData.pipeline = pipeline = p;
 
-                            createPlayerEndpoint(pipeline, sdpOffer, streamingSettings.streamingRtsp, responseData);
+                            createPlayerEndpoint(pipeline, sdpOffer, streamingSettings.streamingRtsp, responseData)
+                                .then(resolve, reject);
                             
                             //pipeline.create("PlayerEndpoint", { uri: streamingSettings.streamingRtsp }, function (error, player) {
                             //    if (error) reject(new Error('An error occurred while creating player endpoint', error));
