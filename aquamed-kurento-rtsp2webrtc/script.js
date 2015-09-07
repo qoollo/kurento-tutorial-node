@@ -12,7 +12,7 @@ window.addEventListener('load', function () {
 
     initVideos();
 
-    initalizeLogContainer(document.getElementById('log-cont'));
+    //initalizeLogContainer(document.getElementById('log-cont'));
 });
 
 function initVideos() {
@@ -105,11 +105,13 @@ function Sample() {
 
         self.showSpinner();
 
-        var kurentoUri = self.getKurentoUri();
-
+        var kurentoUri = self.getKurentoUri(),
+            promises = [];
         for (var i = 0; i < videosWithUrls.length; i++) {
-            var start = videosWithUrls[i].startStreaming(kurentoUri);
-            start.then(
+            promises.push(videosWithUrls[i].startStreaming(kurentoUri));
+        }
+        Promise.all(promises)
+            .then(
                 function (response) {
                     startResponses.push(response);
                     stopButton.disabled = false;
@@ -119,7 +121,6 @@ function Sample() {
                     self.showPoster();
                     startButton.disabled = false;
                 });
-        }
     }
 
     this.stopPlayback = function () {

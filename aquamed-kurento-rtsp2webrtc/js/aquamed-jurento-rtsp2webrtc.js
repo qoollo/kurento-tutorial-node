@@ -69,7 +69,7 @@ function RtspStreamingManager() {
 
             }).then(function (sdpOffer) {
 
-                return new Promise( function (response, reject){
+                return new Promise(function (resolve, reject) {
 
                     kurentoClient(streamingSettings.kurentoWsUri, function (error, kurentoClient) {
                         if (error) reject(new Error('An error occurred while creating kurento client', error));
@@ -79,37 +79,39 @@ function RtspStreamingManager() {
 
                             responseData.pipeline = pipeline = p;
 
-                            pipeline.create("PlayerEndpoint", { uri: streamingSettings.streamingRtsp }, function (error, player) {
-                                if (error) reject(new Error('An error occurred while creating player endpoint', error));
+                            createPlayerEndpoint(pipeline, sdpOffer, streamingSettings.streamingRtsp, responseData);
+                            
+                            //pipeline.create("PlayerEndpoint", { uri: streamingSettings.streamingRtsp }, function (error, player) {
+                            //    if (error) reject(new Error('An error occurred while creating player endpoint', error));
 
-                                pipeline.create("WebRtcEndpoint", function (error, webRtc) {
-                                    if (error) reject(new Error('An error occurred while creating WebRTC endpoint', error));
+                            //    pipeline.create("WebRtcEndpoint", function (error, webRtc) {
+                            //        if (error) reject(new Error('An error occurred while creating WebRTC endpoint', error));
 
-                                    webRtc.processOffer(sdpOffer, function (error, sdpAnswer) {
-                                        if (error) reject(new Error('An error occurred while process offer', error));
+                            //        webRtc.processOffer(sdpOffer, function (error, sdpAnswer) {
+                            //            if (error) reject(new Error('An error occurred while process offer', error));
 
-                                        responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
-                                    });
+                            //            responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
+                            //        });
 
-                                    pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
-                                        if (error) reject(new Error('An error occurred while creating GStreamer filter', error));
+                            //        pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
+                            //            if (error) reject(new Error('An error occurred while creating GStreamer filter', error));
 
-                                        player.connect(gstFilter, function (error) {
-                                            if (error) reject(new Error('An error occurred while player is connected', error));
+                            //            player.connect(gstFilter, function (error) {
+                            //                if (error) reject(new Error('An error occurred while player is connected', error));
 
-                                            gstFilter.connect(webRtc, function (error) {
-                                                if (error) reject(new Error('An error occurred while GStreamer filter is connected', error));
+                            //                gstFilter.connect(webRtc, function (error) {
+                            //                    if (error) reject(new Error('An error occurred while GStreamer filter is connected', error));
 
-                                                player.play(function (error) {
-                                                    if (error) reject(new Error('An error occurred while player started', error));
+                            //                    player.play(function (error) {
+                            //                        if (error) reject(new Error('An error occurred while player started', error));
 
-                                                    response(); // OK!
-                                                });
-                                            });
-                                        });
-                                    });
-                                });
-                            });
+                            //                        resolve(); // OK!
+                            //                    });
+                            //                });
+                            //            });
+                            //        });
+                            //    });
+                            //});
                         });
                     });
                 })
@@ -125,5 +127,59 @@ function RtspStreamingManager() {
             })
             
         })
+    }
+
+    function createPlayerEndpoint(pipeline, sdpOffer, rtspUrls, responseData) {
+        if (typeof rtspUrls === 'string')
+            rtspUrls = [rtspUrls];
+        var promises = [];
+        for (var i = 0; i < rtspUrls.length; i++) {
+            promises.push(new Promise(function (resolve, reject) {
+                pipeline.create("PlayerEndpoint", { uri: rtspUrls[i] }, function (error, player) {
+                    if (error)
+                        reject(new Error('An error occurred while creating player endpoint', error));
+                    createWebRtcEndpoint(pipeline, sdpOffer, player, responseData).then(resolve, reject);
+                });
+            }));
+        }
+        return Promise.all(promises);
+    }
+
+    function createWebRtcEndpoint(pipeline, sdpOffer, player, responseData) {
+        return new Promise(function (resolve, reject) {
+            pipeline.create("WebRtcEndpoint", function (error, webRtc) {
+                if (error)
+                    reject(new Error('An error occurred while creating WebRTC endpoint', error));
+
+                webRtc.processOffer(sdpOffer, function (error, sdpAnswer) {
+                    if (error)
+                        reject(new Error('An error occurred while process offer', error));
+
+                    responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
+                });
+
+                pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
+                    if (error)
+                        reject(new Error('An error occurred while creating GStreamer filter', error));
+
+                    player.connect(gstFilter, function (error) {
+                        if (error)
+                            reject(new Error('An error occurred while player is connected', error));
+
+                        gstFilter.connect(webRtc, function (error) {
+                            if (error)
+                                reject(new Error('An error occurred while GStreamer filter is connected', error));
+
+                            player.play(function (error) {
+                                if (error)
+                                    reject(new Error('An error occurred while player started', error));
+
+                                resolve(); // OK!
+                            });
+                        });
+                    });
+                });
+            });
+        });
     }
 }
