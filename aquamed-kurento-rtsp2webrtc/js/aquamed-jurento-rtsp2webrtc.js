@@ -103,7 +103,7 @@ function RtspStreamingManager() {
                                                 player.play(function (error) {
                                                     if (error) reject(new Error('An error occurred while player started', error));
 
-                                                    reponse(); // OK!
+                                                    response(); // OK!
                                                 });
                                             });
                                         });

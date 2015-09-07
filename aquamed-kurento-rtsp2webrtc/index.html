@@ -1,72 +1,48 @@
 ﻿<!DOCTYPE html>
 
-<script src="./js/aquamed-jurento-rtsp2webrtc.js"></script>
-<script src="./js/kurento-client.js"></script>
-<script src="./js/kurento-utils.js"></script>
-<script src="./js/adapter.js"></script>
-<script>
-    var startResponse = null;
-    var streamingManager = new RtspStreamingManager();
-
-    var poster = './content/poster.png';
-    var spiner = './content/poster.gif';
-
-    function onStart() {
-        var video = document.getElementById('video');
-        var info = document.getElementById('info');
-
-        document.getElementById('start').disabled = true;
-
-        video.poster = spiner;
-
-        var rtsp = document.getElementById('rtsp').value;
-        var kurentoUri = 'ws://' + document.getElementById('kurento').value + ':8888/kurento';
-
-        info.value = 'Запуск. Ждите...';
-
-        var start = streamingManager.startStreaming(new StreamingSettings(kurentoUri, rtsp), video);
-        start.then(function (response) {
-            startResponse = response;
-            document.getElementById('stop').disabled = false;
-            info.value = 'Готово!';
-        }, function (error) {
-            console.log(error);
-            info.value = 'Ошибка! Смотрите консоль.';
-            video.poster = poster;
-            document.getElementById('start').disabled = false;
-        })
-    };
-
-    function onStop() {
-        if (!startResponse) return;
-
-        var video = document.getElementById('video');
-        var info = document.getElementById('info');
-
-        startResponse.stop();
-	video.src = '';
-        document.getElementById('start').disabled = false;
-        document.getElementById('stop').disabled = true;
-        info.value = 'Остановлено.';
-        video.poster = poster;
-    }
-
-</script>
 
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />
     <title>AquamedStreamingTest</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+    <style>
+        #video {
+            width: 100%;
+        }
+    </style>
 </head>
-<body style="max-width:640px;">
-    <input id="info" style="width:640px;" value="Здесь будет информация о ходе процесса..." disabled />
+<body>
 
-    <video id="video" style=" border: 1px solid black;" width="640" height="480" poster="./content/poster.png"></video>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6">
+                <input id="info" class="form-control" value="Здесь будет информация о ходе процесса..." disabled />
 
-    <input id="rtsp" style="width:640px;" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
-    <input id="kurento" style="width:640px;" placeholder="Введите адрес куренто-серера" value="10.5.6.119">
+                <video id="video" style=" border: 1px solid black;" poster="./content/poster.png"></video>
 
-    <button id="start" onclick="onStart()">Старт</button>
-    <button id="stop" onclick="onStop()" disabled>Стоп</button>
+                <input id="rtsp" class="form-control" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
+                <input id="kurento" class="form-control" placeholder="Введите адрес куренто-серера" value="10.5.6.119">
+
+                <button id="start" class="btn btn-primary">Старт</button>
+                <button id="stop" class="btn btn-default" disabled>Стоп</button>
+            </div>
+            <div class="col-md-6">
+                <ul id="log-cont"></ul>
+            </div>
+        </div>
+        
+
+    </div>
+
+
+    <script src="./js/aquamed-jurento-rtsp2webrtc.js"></script>
+    <script src="./js/kurento-client.js"></script>
+    <script src="./js/kurento-utils.js"></script>
+    <script src="./js/adapter.js"></script>
+    <script src="./script.js"></script>
 </body>
 </html>
