@@ -77,8 +77,9 @@ declare module Kurento.Client {
         create(type: string, params: any, callback: (err, result: IMediaObject) => void): Promise<IMediaObject>;
         create(type: string, callback: (err, result: IMediaObject) => void): Promise<IMediaObject>;
         create(type: 'WebRtcEndpoint', callback: (err, result: IWebRtcEndpoint) => void): Promise<IWebRtcEndpoint>;
-        create(type: 'GStreamerFilter', params: any, callback: (err, result: IGStreamerFilter) => void): Promise<IGStreamerFilter>;
-        
+        create(type: 'GStreamerFilter', params: IGStreamerFilterConstructorParams, callback: (err, result: IGStreamerFilter) => void): Promise<IGStreamerFilter>;
+        create(type: 'PlayerEndpoint', params: any, callback: (err, result: IPlayerEndpoint) => void): Promise<IPlayerEndpoint>;
+
     }
 
     interface IMediaElement extends IMediaObject {
@@ -107,41 +108,198 @@ declare module Kurento.Client {
         connect(sink: IMediaElement, callback: (err) => void): Promise<void>;
     }
 
+
+    /**
+     *  Base interface for all end points. An Endpoint is a {@link module:core/abstracts.MediaElement MediaElement}
+     *  that allow <a href="http://www.kurento.org/docs/current/glossary.html#term-kms">KMS</a> to interchange media contents with external systems,
+     *  supporting different transport protocols and mechanisms, such as <a href="http://www.kurento.org/docs/current/glossary.html#term-rtp">RTP</a>,
+     *  <a href="http://<a href="http://www.kurento.org/docs/current/glossary.html#term-http">HTTP</a>org/docs/current/glossary.html#term-webrtc">WebRTC</a>, :term:`HTTP`, <code>file:/</code> URLs... An <code>Endpoint</code> may
+     *  contain both sources and sinks for different media types, to provide
+     *  bidirectional communication.
+    */
     interface IEndpoint extends IMediaElement {
     }
 
+    /**
+     * Session based endpoint. A session is considered to be started when the media exchange starts. On the other hand, sessions terminate when a timeout, defined by the developer, takes place after the connection is lost.
+     */
     interface ISessionEndpoint extends IEndpoint {
     }
 
+    /**
+     * Endpoint that enables Kurento to work as an HTTP server, allowing peer HTTP clients to access media.
+     */
     interface IHttpEndpoint extends ISessionEndpoint {
+        /**
+         * Obtains the URL associated to this endpoint
+         */
+        getUrl(callback: (err, result: string) => void): Promise<string>;
     }
 
+    /**
+     *  An <code>HttpGetEndpoint</code> contains SOURCE pads for AUDIO and VIDEO, delivering media using HTML5 pseudo-streaming mechanism.
+     *  This type of endpoint provide unidirectional communications. Its :rom:cls:`MediaSink` is associated with the HTTP GET method.
+     */
+    interface IHttpGetEndpoint extends IHttpEndpoint {
+    }
+
+    /**
+     * An {@link module:elements.HttpPostEndpoint HttpPostEndpoint} contains SINK pads for AUDIO and VIDEO, which provide access to an HTTP file upload function
+     * This type of endpoint provide unidirectional communications. Its :rom:cls:`MediaSources <MediaSource>` are accessed through the <a href="http://www.kurento.org/docs/current/glossary.html#term-http">HTTP</a> POST method.
+     */
+    interface IHttpPostEndpoint extends IHttpEndpoint {
+    }
+
+    /**
+     * Implements an SDP negotiation endpoint able to generate and process offers/responses and that configures resources according to negotiated Session Description.
+     */
     interface ISdpEndpoint extends ISessionEndpoint {
+
+        /**
+         * Maximum video bandwidth for receiving.
+         *   Unit: kbps(kilobits per second).
+         *    0: unlimited.
+         *   Default value: 500
+         */
+        getMaxVideoRecvBandwidth(callback: (err, result: number) => void): Promise<number>;
+
+        /**
+         * Request a SessionSpec offer.
+         * 
+         *    This can be used to initiate a connection.
+         */
+        generateOffer(callback: (err, result: string) => void): Promise<string>;
+
+        /**
+         * This method gives access to the SessionSpec offered by this NetworkConnection.
+         * 
+         * <hr/><b>Note</b> This method returns the local MediaSpec, negotiated or not. If no offer has been generated yet, it returns null. It an offer has been generated it returns the offer and if an answer has been processed it returns the negotiated local SessionSpec.
+         * Promise (callback) is resolved (called) with the last agreed SessionSpec
+         */
+        getLocalSessionDescriptor(callback: (err, result: string) => void): Promise<string>;
+
+        /**
+         * This method gives access to the remote session description.
+         * 
+         * <hr/><b>Note</b> This method returns the media previously agreed after a complete offer-answer exchange. If no media has been agreed yet, it returns null.
+         * Promise (callback) is resolved (called) with the last agreed User Agent session description.
+         */
+        getRemoteSessionDescriptor(callback: (err, result: string) => void): Promise<string>;
+
+        /**
+         * Request the NetworkConnection to process the given SessionSpec answer (from the remote User Agent).
+         *
+         * @param {external:String} answer
+         *  SessionSpec answer from the remote User Agent
+         *
+         * Promise (callback) is resolved (called) with updated SDP offer, based on the answer received.
+         */
+        processAnswer(answer: string, callback: (err, result: string) => void): Promise<string>;
+
         /**
          * Request the NetworkConnection to process the given SessionSpec offer (from the remote User Agent)
-         *
-         * @alias module:core/abstracts.SdpEndpoint.processOffer
          *
          * @param {external:String} offer
          *  SessionSpec offer from the remote User Agent
          *
          * @param {module:core/abstracts.SdpEndpoint~processOfferCallback} [callback]
+         *  Called with the chosen configuration from the ones stated in the SDP offer
          *
          * @return {external:Promise}
+         *  Resolved with the chosen configuration from the ones stated in the SDP offer
          */
         processOffer(offer: string, callback: (err, result: string) => void): Promise<string>;
     }
 
+    /**
+     * Base class to manage common RTP features.
+     */
     interface IBaseRtpEndpoint extends ISdpEndpoint {
+
+        /**
+         * Maximum video bandwidth for sending.
+         *   Unit: kbps(kilobits per second).
+         *    0: unlimited.
+         *   Default value: 500
+         */
+        getMaxVideoSendBandwidth(callback: (err, result: number) => void): Promise<number>;
+
+        /**
+         * Minimum video bandwidth for sending.
+         *   Unit: kbps(kilobits per second).
+         *    0: unlimited.
+         *   Default value: 100
+         */
+        getMinVideoSendBandwidth(callback: (err, result: number) => void): Promise<number>;
+
     }
 
+    /**
+     * Endpoint that provides bidirectional content delivery capabilities with remote networked peers through RTP protocol. An {@link module:elements.RtpEndpoint RtpEndpoint} contains paired sink and source :rom:cls:`MediaPad` for audio and video.
+     */
+    interface IRtpEndpoint extends ISdpEndpoint {
+    }
+
+    /**
+     * WebRtcEndpoint interface. This type of <code>Endpoint</code> offers media streaming using WebRTC.
+     */
     interface IWebRtcEndpoint extends IBaseRtpEndpoint {
     }
+
+    /** 
+     * Interface for endpoints the require a URI to work. An example of this, would be a :rom:cls:`PlayerEndpoint` whose URI property could be used to locate a file to stream
+     */
+    interface IUriEndpoint extends IEndpoint {
+
+        /**
+         * The uri for this endpoint.
+         */
+        getUri(callback: (err, result: string) => void): Promise<string>;
+
+        /**
+         * Pauses the feed.
+         */
+        pause(callback: (err) => void): Promise<void>;
+
+        /**
+         * Stops the feed.
+         */
+        stop(callback: (err) => void): Promise<void>;
+    }
+
+    /**
+     *  Retrieves content from seekable sources in reliable
+     *  mode (does not discard media information) and inject 
+     *  them into <a href="http://www.kurento.org/docs/current/glossary.html#term-kms">KMS</a>. It
+     *  contains one :rom:cls:`MediaSource` for each media type detected.
+     */
+    interface IPlayerEndpoint extends IUriEndpoint {
+
+        /**
+         * Starts to send data to the endpoint :rom:cls:`MediaSource`
+         */
+        play(callback: (err) => void): Promise<void>;
+    }
+
+    interface IRecorderEndpoint extends IUriEndpoint {
+        
+        /**
+         * Starts storing media received through the :rom:cls:`MediaSink` pad
+         */
+        record(callback: (err) => void): Promise<void>;
+    }
+
+
 
     interface IFilter extends IMediaElement {
     }
 
     interface IGStreamerFilter extends IFilter {
+    }
+    interface IGStreamerFilterConstructorParams {
+        command: string,
+        filterType?: string,
+        mediaPipeline: IMediaPipeline
     }
 
     interface IZBarFilter extends IFilter {
@@ -150,9 +308,11 @@ declare module Kurento.Client {
     interface IOpenCVFilter extends IFilter {
     }
 
+
+
     interface IServerManager {
     }
-    
+
     interface IKurentoClient {
         /**
          * Create a new instance of a MediaObject
@@ -218,7 +378,7 @@ declare module Kurento.Client {
         register;
         TransactionsManager;
     }
-        
+
 }
 
 declare var kurentoClient: Kurento.Client.IKurentoClientConstructor;

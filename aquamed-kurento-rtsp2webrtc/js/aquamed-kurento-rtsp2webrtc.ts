@@ -105,7 +105,7 @@ class RtspStreamingManager {
         return Promise.all(promises);
     }
 
-    private createWebRtcEndpoint(sdpOffer, player, responseData: StartStreamingResponse) {
+    private createWebRtcEndpoint(sdpOffer, player: Kurento.Client.IPlayerEndpoint, responseData: StartStreamingResponse) {
         return new Promise(function (resolve, reject) {
             responseData.pipeline.create("WebRtcEndpoint", function (error, webRtc) {
                 if (error)
@@ -117,8 +117,8 @@ class RtspStreamingManager {
 
                     responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
                 });
-
-                responseData.pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
+                
+                responseData.pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: 'VIDEO', mediaPipeline: responseData.pipeline }, function (error, gstFilter) {
                     if (error)
                         reject(new KurentoClientError('An error occurred while creating GStreamer filter', error));
 
