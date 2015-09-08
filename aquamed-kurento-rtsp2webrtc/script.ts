@@ -90,8 +90,12 @@ class Sample {
     constructor(sampleContainer: HTMLElement) {
 
         this.startButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-start')[0];
+        this.startButton.addEventListener('click', () => this.startPlayback());
+
         this.pauseButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-pause')[0];
+
         this.stopButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-stop')[0];
+        this.stopButton.addEventListener('click', () => this.stopPlayback());
 
         var videoWithUrlContainers = sampleContainer.getElementsByClassName(VideoWithUrlInput.containerSelector);
         for (var i = 0; i < videoWithUrlContainers.length; i++)
