@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 
     <style>
+        .sample-container {
+            margin-top: 50px;
+        }
+
         #video {
             width: 100%;
         }
@@ -22,28 +26,40 @@
 </head>
 <body>
 
-    <div class="jumbotron">
-        Примеры воспроизведения RTSP-потоков через Kurento Media Server через WebRTC
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-10 col-md-offset-1">
+                <div class="jumbotron">
+                    <p>Примеры воспроизведения RTSP-потоков через Kurento Media Server через WebRTC</p>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-10 col-md-offset-1">
+                <label for="kurento">Адрес Kurento Media Server:</label>
+                <input id="kurento" class="form-control" placeholder="Введите адрес куренто-серера" value="10.5.6.119">
+            </div>
+        </div>
     </div>
 
-    <label for="kurento">Адрес Kurento Media Server:</label>
-    <input id="kurento" class="form-control" placeholder="Введите адрес куренто-серера" value="10.5.6.119">
 
 
-    <div id="sample-1" class="container-fluid">
+    <div id="sample-1" class="container-fluid sample-container">
         <div class="row">
-            <h1>
-                Пример 1. Воспроизведение RTSP потока.
+            <div class="col-md-10 col-md-offset-1">
+                <h1>
+                    Пример 1. Воспроизведение RTSP потока.
 
-                <spn class="btn-group">
-                    <button id="start" class="btn btn-lg btn-success btn-start">
-                        <span class="glyphicon glyphicon-play"></span> Старт
-                    </button>
-                    <button id="stop" class="btn btn-lg btn-danger btn-stop" disabled>
-                        <span class="glyphicon glyphicon-stop"></span> Стоп
-                    </button>
-                </spn>
-            </h1>
+                    <spn class="btn-group">
+                        <button id="start" class="btn btn-lg btn-success btn-start">
+                            <span class="glyphicon glyphicon-play"></span> Старт
+                        </button>
+                        <button id="stop" class="btn btn-lg btn-danger btn-stop" disabled>
+                            <span class="glyphicon glyphicon-stop"></span> Стоп
+                        </button>
+                    </spn>
+                </h1>
+            </div>            
         </div>
         <div class="row">
             <div class="col-md-6">
@@ -64,65 +80,66 @@
         </div>
     </div>
     <hr />
-    <div id="sample-2" class="container-fluid">
+    <div id="sample-2" class="container-fluid sample-container">
         <div class="row">
-            <h1>
-                Пример 2. Воспроизведение 4 RTSP потоков.
+            <div class="col-md-10 col-md-offset-1">
+                <h1>
+                    Пример 2. Воспроизведение 4 RTSP потоков.
 
-                <spn class="btn-group">
-                    <button id="start-2" class="btn btn-lg btn-success btn-start">
-                        <span class="glyphicon glyphicon-play"></span> Старт
-                    </button>
-                    <button id="stop-2" class="btn btn-lg btn-default btn-pause" disabled>
-                        <span class="glyphicon glyphicon-pause"></span> Пауза
-                    </button>
-                    <button id="stop-2" class="btn btn-lg btn-danger btn-stop" disabled>
-                        <span class="glyphicon glyphicon-stop"></span> Стоп
-                    </button>
-                </spn>
-            </h1>
+                    <spn class="btn-group">
+                        <button id="start-2" class="btn btn-lg btn-success btn-start">
+                            <span class="glyphicon glyphicon-play"></span> Старт
+                        </button>
+                        <button id="stop-2" class="btn btn-lg btn-default btn-pause" disabled>
+                            <span class="glyphicon glyphicon-pause"></span> Пауза
+                        </button>
+                        <button id="stop-2" class="btn btn-lg btn-danger btn-stop" disabled>
+                            <span class="glyphicon glyphicon-stop"></span> Стоп
+                        </button>
+                    </spn>
+                </h1>
+            </div>            
         </div>
 
         <div class="row">
             <div class="col-md-6 video-with-url">
                 <video id="video-1"></video>
-                <input id="rtsp-1" 
-                       class="form-control" 
-                       type="url" 
-                       placeholder="Введите адрес RTSP потока" 
+                <input id="rtsp-1"
+                       class="form-control"
+                       type="url"
+                       placeholder="Введите адрес RTSP потока"
                        value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
             </div>
             <div class="col-md-6 video-with-url">
                 <video id="video-2"></video>
-                <input id="rtsp-2" 
-                       class="form-control" 
-                       type="url" 
-                       placeholder="Введите адрес RTSP потока" 
+                <input id="rtsp-2"
+                       class="form-control"
+                       type="url"
+                       placeholder="Введите адрес RTSP потока"
                        value="rtsp://10.5.5.80:8091/grabber.sdp">
             </div>
         </div>
         <div class="row">
             <div class="col-md-6 video-with-url">
                 <video id="video-3"></video>
-                <input id="rtsp-3" 
-                       class="form-control" 
-                       type="url" 
-                       placeholder="Введите адрес RTSP потока" 
+                <input id="rtsp-3"
+                       class="form-control"
+                       type="url"
+                       placeholder="Введите адрес RTSP потока"
                        value="rtsp://10.5.5.86/ONVIF/MediaInput?profile=Auqamed_MQ">
             </div>
             <div class="col-md-6 video-with-url">
                 <video id="video-4"></video>
-                <input id="rtsp-4" 
-                       class="form-control" 
-                       type="url" 
-                       placeholder="Введите адрес RTSP потока" 
+                <input id="rtsp-4"
+                       class="form-control"
+                       type="url"
+                       placeholder="Введите адрес RTSP потока"
                        value="rtsp://10.5.5.80:8092/grabber.sdp">
             </div>
         </div>
     </div>
 
 
-    <script src="./js/aquamed-jurento-rtsp2webrtc.js"></script>
     <script src="./bower_components/kurento-client/js/kurento-client.js"></script>
     <script src="./bower_components/kurento-utils/js/kurento-utils.js"></script>
     <script src="./bower_components/webrtc-adapter/adapter.js"></script>
