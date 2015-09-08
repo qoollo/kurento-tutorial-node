@@ -78,11 +78,23 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        create(type: string, params: any, callback: ICallback<IMediaObject>): Promise<IMediaObject>;
-        create(type: string, callback: ICallback<IMediaObject>): Promise<IMediaObject>;
-        create(type: 'WebRtcEndpoint', callback: ICallback<IWebRtcEndpoint>): Promise<IWebRtcEndpoint>;
-        create(type: 'GStreamerFilter', params: IGStreamerFilterConstructorParams, callback: ICallback<IGStreamerFilter>): Promise<IGStreamerFilter>;
-        create(type: 'PlayerEndpoint', params: any, callback: ICallback<IPlayerEndpoint>): Promise<IPlayerEndpoint>;
+        create(type: string, params?: Object, callback?: ICallback<IMediaObject>): Promise<IMediaObject>;
+        //create(type: string, callback: ICallback<IMediaObject>): Promise<IMediaObject>;
+        create(type: 'WebRtcEndpoint', callback?: ICallback<IWebRtcEndpoint>): Promise<IWebRtcEndpoint>;
+        create(
+            type: 'GStreamerFilter',
+            params: {
+                command: string,
+                filterType?: string
+            },
+            callback?: ICallback<IGStreamerFilter>): Promise<IGStreamerFilter>;
+        create(
+            type: 'PlayerEndpoint',
+            params: {
+                uri: string;
+                useEncodedMedia?: boolean;
+            },
+            callback?: ICallback<IPlayerEndpoint>): Promise<IPlayerEndpoint>;
 
     }
 
@@ -300,11 +312,6 @@ declare module Kurento.Client {
 
     interface IGStreamerFilter extends IFilter {
     }
-    interface IGStreamerFilterConstructorParams {
-        command: string,
-        filterType?: string,
-        mediaPipeline: IMediaPipeline
-    }
 
     interface IZBarFilter extends IFilter {
     }
@@ -328,6 +335,7 @@ declare module Kurento.Client {
          * @return {module:KurentoClientApi~KurentoClient} The Kurento client itself
          */
         create(type: string, callback: ICallback<IMediaPipeline>): IKurentoClient;
+        create(type: 'MediaPipeline', callback: ICallback<IMediaPipeline>): IKurentoClient;
 
         /**
          * Connect the source of a media to the sink of the next one
