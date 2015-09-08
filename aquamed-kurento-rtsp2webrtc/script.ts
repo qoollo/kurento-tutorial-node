@@ -9,10 +9,8 @@ var poster = './content/poster.png',
 window.addEventListener('load', function () {
 
     sample1 = new Sample1();
-    sample1.init();
 
     sample2 = new Sample2();
-    sample2.init();
 
     initVideos();
 
@@ -99,26 +97,12 @@ class Sample {
             this.videosWithUrls.push(new VideoWithUrlInput(<HTMLDivElement>videoWithUrlContainers[i]));
     }
 
-    private videosWithUrls: VideoWithUrlInput[] = [];
+    protected videosWithUrls: VideoWithUrlInput[] = [];
     private startResponses: StartStreamingResponse[] = [];
     protected startButton: HTMLButtonElement;
     protected pauseButton: HTMLButtonElement;
     protected stopButton: HTMLButtonElement;
 
-    /**
-     * @param {VideoWithUrlInput} videoWithUrlInput
-     */
-    addVideoElement(videoWithUrlInput: VideoWithUrlInput) {
-        this.videosWithUrls.push(videoWithUrlInput);
-    }
-    setStartButton(value: HTMLButtonElement) {
-        this.startButton = value;
-        this.startButton.addEventListener('click', () => this.startPlayback());
-    }
-    setStopButton(value: HTMLButtonElement) {
-        this.stopButton = value;
-        this.stopButton.addEventListener('click', () => this.stopPlayback());
-    }
     showPoster() {
         this.videosWithUrls.forEach(v => v.getVideoElement().poster = poster);
     }
@@ -167,25 +151,18 @@ class Sample1 extends Sample {
 
     constructor() {
         super(document.getElementById('sample-1'));
+
+        this.startButton.addEventListener('click', () => this.onStart());
+        this.stopButton.addEventListener('click', () => this.onStop());
+        this.videoElement = this.videosWithUrls[0].getVideoElement();
+        this.infoElement = document.getElementById('info');
     }
 
     private videoElement: HTMLVideoElement;
     private infoElement;
     private startResponse = null;
     private streamingManager = new RtspStreamingManager();
-
-    init(): void {
-        this.startButton = <HTMLButtonElement>document.getElementById('start');
-        this.startButton.addEventListener('click', () => this.onStart());
-
-        this.stopButton = <HTMLButtonElement>document.getElementById('stop');
-        this.stopButton.addEventListener('click', () => this.onStop());
-
-        this.videoElement = <HTMLVideoElement>document.getElementById('video');
-
-        this.infoElement = document.getElementById('info');
-    }
-
+    
     private onStart(): void {
         this.startButton.disabled = true;
 
@@ -225,10 +202,5 @@ class Sample2 extends Sample {
 
     constructor() {
         super(document.getElementById('sample-2'));
-    }
-
-    init(): void {
-        this.setStartButton(<HTMLButtonElement>document.getElementById('start-2'));
-        this.setStopButton(<HTMLButtonElement>document.getElementById('stop-2'));
     }
 }
