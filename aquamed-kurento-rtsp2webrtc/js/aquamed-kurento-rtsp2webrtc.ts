@@ -41,8 +41,8 @@ class KurentoClientError {
     }
 }
 
-function RtspStreamingManager() {
-    this.startStreaming = function (streamingSettings, videoElement) {
+class RtspStreamingManager {
+    startStreaming(streamingSettings, videoElement): Promise<StartStreamingResponse> {
         if (!(streamingSettings instanceof StreamingSettings)
             || !streamingSettings.kurentoWsUri
             || !streamingSettings.streamingRtsp)
@@ -70,40 +70,8 @@ function RtspStreamingManager() {
 
                             responseData.pipeline = p;
 
-                            createPlayerEndpoint(sdpOffer, streamingSettings.streamingRtsp, responseData)
+                            this.createPlayerEndpoint(sdpOffer, streamingSettings.streamingRtsp, responseData)
                                 .then(resolve, reject);
-                            
-                            //pipeline.create("PlayerEndpoint", { uri: streamingSettings.streamingRtsp }, function (error, player) {
-                            //    if (error) reject(new KurentoClientError('An error occurred while creating player endpoint', error));
-
-                            //    pipeline.create("WebRtcEndpoint", function (error, webRtc) {
-                            //        if (error) reject(new KurentoClientError('An error occurred while creating WebRTC endpoint', error));
-
-                            //        webRtc.processOffer(sdpOffer, function (error, sdpAnswer) {
-                            //            if (error) reject(new KurentoClientError('An error occurred while process offer', error));
-
-                            //            responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
-                            //        });
-
-                            //        pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
-                            //            if (error) reject(new KurentoClientError('An error occurred while creating GStreamer filter', error));
-
-                            //            player.connect(gstFilter, function (error) {
-                            //                if (error) reject(new KurentoClientError('An error occurred while player is connected', error));
-
-                            //                gstFilter.connect(webRtc, function (error) {
-                            //                    if (error) reject(new KurentoClientError('An error occurred while GStreamer filter is connected', error));
-
-                            //                    player.play(function (error) {
-                            //                        if (error) reject(new KurentoClientError('An error occurred while player started', error));
-
-                            //                        resolve(); // OK!
-                            //                    });
-                            //                });
-                            //            });
-                            //        });
-                            //    });
-                            //});
                         });
                     });
                 })
@@ -121,7 +89,7 @@ function RtspStreamingManager() {
         })
     }
 
-    function createPlayerEndpoint(sdpOffer, rtspUrls, responseData: StartStreamingResponse) {
+    private createPlayerEndpoint(sdpOffer, rtspUrls, responseData: StartStreamingResponse) {
         if (typeof rtspUrls === 'string')
             rtspUrls = [rtspUrls];
         var promises = [];
@@ -130,14 +98,14 @@ function RtspStreamingManager() {
                 responseData.pipeline.create("PlayerEndpoint", { uri: rtspUrls[i] }, function (error, player) {
                     if (error)
                         reject(new KurentoClientError('An error occurred while creating player endpoint', error));
-                    createWebRtcEndpoint(sdpOffer, player, responseData).then(resolve, reject);
+                    this.createWebRtcEndpoint(sdpOffer, player, responseData).then(resolve, reject);
                 });
             }));
         }
         return Promise.all(promises);
     }
 
-    function createWebRtcEndpoint(sdpOffer, player, responseData: StartStreamingResponse) {
+    private createWebRtcEndpoint(sdpOffer, player, responseData: StartStreamingResponse) {
         return new Promise(function (resolve, reject) {
             responseData.pipeline.create("WebRtcEndpoint", function (error, webRtc) {
                 if (error)

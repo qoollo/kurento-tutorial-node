@@ -56,15 +56,19 @@ function appendLog(logContainer, text, cssClass = '') {
  * @param {HTMLVideoElement} videoElement
  * @param {Function} getUrlFunc
  */
-function VideoWithUrlInput(videoElement, getUrlFunc) {
-    this.getVideoElement = function () {
-        return videoElement;
-    }
-    this.startStreaming = function (kurentoUri) {
-        return streamingManager.startStreaming(new StreamingSettings(kurentoUri, getUrlFunc()), videoElement);
+class VideoWithUrlInput {
+
+    constructor(private _videoElement: HTMLVideoElement, private getUrlFunc: () => string) {
     }
 
-    var streamingManager = new RtspStreamingManager();
+    getVideoElement() {
+        return this._videoElement;
+    }
+    startStreaming(kurentoUri: string) {
+        return this.streamingManager.startStreaming(new StreamingSettings(kurentoUri, this.getUrlFunc()), this._videoElement);
+    }
+
+    private streamingManager = new RtspStreamingManager();
 }
 
 
@@ -73,175 +77,155 @@ function VideoWithUrlInput(videoElement, getUrlFunc) {
  * 
  * @param {HTMLElement} sampleContainer
  */
-function Sample(sampleContainer) {
+class Sample {
 
-    var videosWithUrls = [],
-        startResponses = [],
-        startButton,
-        stopButton,
-        self = this;
+    private videosWithUrls: VideoWithUrlInput[] = [];
+    private startResponses: StartStreamingResponse[] = [];
+    protected startButton: HTMLButtonElement;
+    protected stopButton: HTMLButtonElement;
 
     /**
      * @param {VideoWithUrlInput} videoWithUrlInput
      */
-    this.addVideoElement = function (videoWithUrlInput) {
-        videosWithUrls.push(videoWithUrlInput);
+    addVideoElement(videoWithUrlInput: VideoWithUrlInput) {
+        this.videosWithUrls.push(videoWithUrlInput);
     }
-    this.setStartButton = function (value) {
-        startButton = value;
-        startButton.addEventListener('click', self.startPlayback);
+    setStartButton(value: HTMLButtonElement) {
+        this.startButton = value;
+        this.startButton.addEventListener('click', () => this.startPlayback());
     }
-    this.setStopButton = function (value) {
-        stopButton = value;
-        stopButton.addEventListener('click', self.stopPlayback);
+    setStopButton(value: HTMLButtonElement) {
+        this.stopButton = value;
+        this.stopButton.addEventListener('click', () => this.stopPlayback());
     }
-    this.showPoster = function () {
-        for (var i = 0; i < videosWithUrls.length; i++) {
-            videosWithUrls[i].getVideoElement().poster = poster;
-        }
+    showPoster() {
+        this.videosWithUrls.forEach(v => v.getVideoElement().poster = poster);
     }
-    this.showSpinner = function (videoElement) {
-        for (var i = 0; i < videosWithUrls.length; i++) {
-            videosWithUrls[i].getVideoElement().poster = './content/poster.gif';
-        }
+    showSpinner() {
+        this.videosWithUrls.forEach(v => v.getVideoElement().poster = './content/poster.gif');
     }
-    this.getKurentoUri = function () {
+    getKurentoUri(): string {
         return 'ws://' + document.getElementById('kurento').getAttribute('value') + ':8888/kurento';
     }
 
-    this.startPlayback = function () {
-        startButton.disabled = true;
+    startPlayback(): void {
+        this.startButton.disabled = true;
 
-        self.showSpinner();
+        this.showSpinner();
 
-        var kurentoUri = self.getKurentoUri(),
-            promises = [];
-        for (var i = 0; i < videosWithUrls.length; i++) {
-            promises.push(videosWithUrls[i].startStreaming(kurentoUri));
-        }
+        var kurentoUri = this.getKurentoUri(),
+            promises = this.videosWithUrls.map(v => v.startStreaming(kurentoUri));
+
         Promise.all(promises)
             .then(
-                function (responses) {
-                    for (var i = 0; i < responses.length; i++)
-                        startResponses.push(responses[i]);
-                    stopButton.disabled = false;
+                responses => {
+                    responses.forEach(r => this.startResponses.push(r));
+                    this.stopButton.disabled = false;
                 },
-                function (error) {
+                error => {
                     console.error(error);
-                    self.showPoster();
-                    startButton.disabled = false;
+                    this.showPoster();
+                    this.startButton.disabled = false;
                 });
     }
 
-    this.stopPlayback = function () {
-        if (startResponses.length < videosWithUrls.length)
+    stopPlayback(): void {
+        if (this.startResponses.length < this.videosWithUrls.length)
             return;
 
-        for (var i = 0; i < startResponses.length; i++) {
-            startResponses[i].stop();
-        }
-        startResponses.length = 0;
-        for (var i = 0; i < videosWithUrls.length; i++) {
-            videosWithUrls[i].getVideoElement().src = '';
-        }
-        self.showPoster();
-        startButton.disabled = false;
-        stopButton.disabled = true;
+        this.startResponses.forEach(r => r.stop());
+        this.startResponses.length = 0;
+        this.videosWithUrls.forEach(v => v.getVideoElement().src = '');
+        this.showPoster();
+        this.startButton.disabled = false;
+        this.stopButton.disabled = true;
     }
 }
 
-function Sample1() {
+class Sample1 extends Sample {
 
-    Sample.apply(this);
-
-    var startButton,
-        stopButton,
-        videoElement,
-        infoElement,
-        startResponse = null,
-        streamingManager = new RtspStreamingManager(),
-        self = this;
-
-    this.init = function () {
-        startButton = document.getElementById('start');
-        startButton.addEventListener('click', onStart);
-
-        stopButton = document.getElementById('stop');
-        stopButton.addEventListener('click', onStop);
-
-        videoElement = document.getElementById('video');
-        self.addVideoElement(new VideoWithUrlInput(videoElement, null));
-
-        infoElement = document.getElementById('info');
+    constructor() {
+        super();
     }
 
-    function onStart() {
-        startButton.disabled = true;
+    private videoElement: HTMLVideoElement;
+    private infoElement;
+    private startResponse = null;
+    private streamingManager = new RtspStreamingManager();
 
-        self.showSpinner();
+    init(): void {
+        this.startButton = <HTMLButtonElement>document.getElementById('start');
+        this.startButton.addEventListener('click', () => this.onStart());
+
+        this.stopButton = <HTMLButtonElement>document.getElementById('stop');
+        this.stopButton.addEventListener('click', () => this.onStop());
+
+        this.videoElement = <HTMLVideoElement>document.getElementById('video');
+        this.addVideoElement(new VideoWithUrlInput(this.videoElement, null));
+
+        this.infoElement = document.getElementById('info');
+    }
+
+    private onStart(): void {
+        this.startButton.disabled = true;
+
+        this.showSpinner();
 
         var rtsp = document.getElementById('rtsp').getAttribute('value');
         var kurentoUri = 'ws://' + document.getElementById('kurento').getAttribute('value') + ':8888/kurento';
 
-        infoElement.value = 'Запуск. Ждите...';
+        this.infoElement.value = 'Запуск. Ждите...';
 
-        var start = streamingManager.startStreaming(new StreamingSettings(kurentoUri, rtsp), videoElement);
+        var start = this.streamingManager.startStreaming(new StreamingSettings(kurentoUri, rtsp), this.videoElement);
         start.then(function (response) {
-            startResponse = response;
-            stopButton.disabled = false;
-            infoElement.value = 'Готово!';
+            this.startResponse = response;
+            this.stopButton.disabled = false;
+            this.infoElement.value = 'Готово!';
         }, function (error) {
             console.error(error);
-            infoElement.value = 'Ошибка! Смотрите консоль.';
-            self.showPoster();
-            startButton.disabled = false;
+            this.infoElement.value = 'Ошибка! Смотрите консоль.';
+            this.showPoster();
+            this.startButton.disabled = false;
         })
     }
 
-    function onStop() {
-        if (!startResponse) return;
+    onStop(): void {
+        if (!this.startResponse) return;
 
-        startResponse.stop();
-        videoElement.src = '';
-        startButton.disabled = false;
-        stopButton.disabled = true;
-        infoElement.value = 'Остановлено.';
-        self.showPoster();
+        this.startResponse.stop();
+        this.videoElement.src = '';
+        this.startButton.disabled = false;
+        this.stopButton.disabled = true;
+        this.infoElement.value = 'Остановлено.';
+        this.showPoster();
     }
 }
-Sample1.prototype = Object.create(Sample.prototype);
-Sample1.prototype.constructor = Sample1;
 
-function Sample2() {
+class Sample2 extends Sample {
 
-    Sample.apply(this);
+    constructor() {
+        super();
+    }
 
-    var startButton,
-        stopButton,
-        startResponses = [],
-        self = this;
+    init(): void {
+        this.setStartButton(<HTMLButtonElement>document.getElementById('start-2'));
+        this.setStopButton(<HTMLButtonElement>document.getElementById('stop-2'));
 
-    this.init = function () {
-        self.setStartButton(document.getElementById('start-2'));
-        self.setStopButton(document.getElementById('stop-2'));
-
-        self.addVideoElement(
+        this.addVideoElement(
             new VideoWithUrlInput(
-                document.getElementById('video-1'),
-                function () { return document.getElementById('rtsp-1').getAttribute('value') }));
-        self.addVideoElement(
+                <HTMLVideoElement>document.getElementById('video-1'),
+                () => document.getElementById('rtsp-1').getAttribute('value')));
+        this.addVideoElement(
             new VideoWithUrlInput(
-                document.getElementById('video-2'),
-                function () { return document.getElementById('rtsp-2').getAttribute('value') }));
-        self.addVideoElement(
+                <HTMLVideoElement>document.getElementById('video-2'),
+                () => document.getElementById('rtsp-2').getAttribute('value')));
+        this.addVideoElement(
             new VideoWithUrlInput(
-                document.getElementById('video-3'),
-                function () { return document.getElementById('rtsp-3').getAttribute('value') }));
-        self.addVideoElement(
+                <HTMLVideoElement>document.getElementById('video-3'),
+                () => document.getElementById('rtsp-3').getAttribute('value')));
+        this.addVideoElement(
             new VideoWithUrlInput(
-                document.getElementById('video-4'),
-                function () { return document.getElementById('rtsp-4').getAttribute('value') }));
+                <HTMLVideoElement>document.getElementById('video-4'),
+                () => document.getElementById('rtsp-4').getAttribute('value')));
     }
 }
-Sample2.prototype = Object.create(Sample.prototype);
-Sample2.prototype.constructor = Sample2;
