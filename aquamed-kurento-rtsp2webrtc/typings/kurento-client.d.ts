@@ -1,6 +1,10 @@
 
 declare module Kurento.Client {
 
+    interface ICallback<T> {
+        (err: any, result: T): void;
+    }
+
     interface IMediaObject {
         /**
          * Childs of current object, all returned objects have parent set to current object
@@ -11,7 +15,7 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        getChilds(callback: (err, result: IMediaObject[]) => void): Promise<IMediaObject[]>;
+        getChilds(callback: ICallback<IMediaObject>): Promise<IMediaObject[]>;
 
         /**
          * {@link module:core.MediaPipeline MediaPipeline} to which this MediaObject belong, or the pipeline itself if invoked over a {@link module:core.MediaPipeline MediaPipeline}
@@ -22,7 +26,7 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        getMediaPipeline(callback: (err, result: IMediaPipeline) => void): Promise<IMediaPipeline>;
+        getMediaPipeline(callback: ICallback<IMediaPipeline>): Promise<IMediaPipeline>;
 
         /**
          * Object name. This is just a comodity to simplify developers life debugging, it is not used internally for indexing nor idenfiying the objects. By default is the object type followed by the object id.
@@ -33,7 +37,7 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        getName(callback: (err, result: string) => void): Promise<string>;
+        getName(callback: ICallback<string>): Promise<string>;
 
         /**
          * parent of this media object. The type of the parent depends on the type of the element. The parent of a :rom:cls:`MediaPad` is its {@link module:core/abstracts.MediaElement MediaElement}; the parent of a {@link module:core/abstracts.Hub Hub} or a {@link module:core/abstracts.MediaElement MediaElement} is its {@link module:core.MediaPipeline MediaPipeline}. A {@link module:core.MediaPipeline MediaPipeline} has no parent, i.e. the property is null
@@ -44,7 +48,7 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        getParent(callback: (err, result: IMediaObject) => void): Promise<IMediaObject>;
+        getParent(callback: ICallback<IMediaObject>): Promise<IMediaObject>;
 
         /**
          * Explicity release a {@link module:core/abstract.MediaObject MediaObject} from memory
@@ -55,7 +59,7 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        release(callback?: (err) => void): Promise<void>;
+        release(callback?: ICallback<void>): Promise<void>;
 
         commited: boolean;
 
@@ -74,11 +78,11 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        create(type: string, params: any, callback: (err, result: IMediaObject) => void): Promise<IMediaObject>;
-        create(type: string, callback: (err, result: IMediaObject) => void): Promise<IMediaObject>;
-        create(type: 'WebRtcEndpoint', callback: (err, result: IWebRtcEndpoint) => void): Promise<IWebRtcEndpoint>;
-        create(type: 'GStreamerFilter', params: IGStreamerFilterConstructorParams, callback: (err, result: IGStreamerFilter) => void): Promise<IGStreamerFilter>;
-        create(type: 'PlayerEndpoint', params: any, callback: (err, result: IPlayerEndpoint) => void): Promise<IPlayerEndpoint>;
+        create(type: string, params: any, callback: ICallback<IMediaObject>): Promise<IMediaObject>;
+        create(type: string, callback: ICallback<IMediaObject>): Promise<IMediaObject>;
+        create(type: 'WebRtcEndpoint', callback: ICallback<IWebRtcEndpoint>): Promise<IWebRtcEndpoint>;
+        create(type: 'GStreamerFilter', params: IGStreamerFilterConstructorParams, callback: ICallback<IGStreamerFilter>): Promise<IGStreamerFilter>;
+        create(type: 'PlayerEndpoint', params: any, callback: ICallback<IPlayerEndpoint>): Promise<IPlayerEndpoint>;
 
     }
 
@@ -104,8 +108,8 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        connect(sink: IMediaElement, mediaType: string, sourceMediaDescription: string, sinkMediaDescription: string, callback: (err) => void): Promise<void>;
-        connect(sink: IMediaElement, callback: (err) => void): Promise<void>;
+        connect(sink: IMediaElement, mediaType: string, sourceMediaDescription: string, sinkMediaDescription: string, callback: ICallback<void>): Promise<void>;
+        connect(sink: IMediaElement, callback: ICallback<void>): Promise<void>;
     }
 
 
@@ -133,7 +137,7 @@ declare module Kurento.Client {
         /**
          * Obtains the URL associated to this endpoint
          */
-        getUrl(callback: (err, result: string) => void): Promise<string>;
+        getUrl(callback: ICallback<string>): Promise<string>;
     }
 
     /**
@@ -161,14 +165,14 @@ declare module Kurento.Client {
          *    0: unlimited.
          *   Default value: 500
          */
-        getMaxVideoRecvBandwidth(callback: (err, result: number) => void): Promise<number>;
+        getMaxVideoRecvBandwidth(callback: ICallback<number>): Promise<number>;
 
         /**
          * Request a SessionSpec offer.
          * 
          *    This can be used to initiate a connection.
          */
-        generateOffer(callback: (err, result: string) => void): Promise<string>;
+        generateOffer(callback: ICallback<string>): Promise<string>;
 
         /**
          * This method gives access to the SessionSpec offered by this NetworkConnection.
@@ -176,7 +180,7 @@ declare module Kurento.Client {
          * <hr/><b>Note</b> This method returns the local MediaSpec, negotiated or not. If no offer has been generated yet, it returns null. It an offer has been generated it returns the offer and if an answer has been processed it returns the negotiated local SessionSpec.
          * Promise (callback) is resolved (called) with the last agreed SessionSpec
          */
-        getLocalSessionDescriptor(callback: (err, result: string) => void): Promise<string>;
+        getLocalSessionDescriptor(callback: ICallback<string>): Promise<string>;
 
         /**
          * This method gives access to the remote session description.
@@ -184,7 +188,7 @@ declare module Kurento.Client {
          * <hr/><b>Note</b> This method returns the media previously agreed after a complete offer-answer exchange. If no media has been agreed yet, it returns null.
          * Promise (callback) is resolved (called) with the last agreed User Agent session description.
          */
-        getRemoteSessionDescriptor(callback: (err, result: string) => void): Promise<string>;
+        getRemoteSessionDescriptor(callback: ICallback<string>): Promise<string>;
 
         /**
          * Request the NetworkConnection to process the given SessionSpec answer (from the remote User Agent).
@@ -194,7 +198,7 @@ declare module Kurento.Client {
          *
          * Promise (callback) is resolved (called) with updated SDP offer, based on the answer received.
          */
-        processAnswer(answer: string, callback: (err, result: string) => void): Promise<string>;
+        processAnswer(answer: string, callback: ICallback<string>): Promise<string>;
 
         /**
          * Request the NetworkConnection to process the given SessionSpec offer (from the remote User Agent)
@@ -208,7 +212,7 @@ declare module Kurento.Client {
          * @return {external:Promise}
          *  Resolved with the chosen configuration from the ones stated in the SDP offer
          */
-        processOffer(offer: string, callback: (err, result: string) => void): Promise<string>;
+        processOffer(offer: string, callback: ICallback<string>): Promise<string>;
     }
 
     /**
@@ -222,7 +226,7 @@ declare module Kurento.Client {
          *    0: unlimited.
          *   Default value: 500
          */
-        getMaxVideoSendBandwidth(callback: (err, result: number) => void): Promise<number>;
+        getMaxVideoSendBandwidth(callback: ICallback<number>): Promise<number>;
 
         /**
          * Minimum video bandwidth for sending.
@@ -230,7 +234,7 @@ declare module Kurento.Client {
          *    0: unlimited.
          *   Default value: 100
          */
-        getMinVideoSendBandwidth(callback: (err, result: number) => void): Promise<number>;
+        getMinVideoSendBandwidth(callback: ICallback<number>): Promise<number>;
 
     }
 
@@ -254,17 +258,17 @@ declare module Kurento.Client {
         /**
          * The uri for this endpoint.
          */
-        getUri(callback: (err, result: string) => void): Promise<string>;
+        getUri(callback: ICallback<string>): Promise<string>;
 
         /**
          * Pauses the feed.
          */
-        pause(callback: (err) => void): Promise<void>;
+        pause(callback: ICallback<void>): Promise<void>;
 
         /**
          * Stops the feed.
          */
-        stop(callback: (err) => void): Promise<void>;
+        stop(callback: ICallback<void>): Promise<void>;
     }
 
     /**
@@ -278,7 +282,7 @@ declare module Kurento.Client {
         /**
          * Starts to send data to the endpoint :rom:cls:`MediaSource`
          */
-        play(callback: (err) => void): Promise<void>;
+        play(callback: ICallback<void>): Promise<void>;
     }
 
     interface IRecorderEndpoint extends IUriEndpoint {
@@ -286,7 +290,7 @@ declare module Kurento.Client {
         /**
          * Starts storing media received through the :rom:cls:`MediaSink` pad
          */
-        record(callback: (err) => void): Promise<void>;
+        record(callback: ICallback<void>): Promise<void>;
     }
 
 
@@ -323,7 +327,7 @@ declare module Kurento.Client {
          *
          * @return {module:KurentoClientApi~KurentoClient} The Kurento client itself
          */
-        create(type: string, callback: (err, result: IMediaPipeline) => void): IKurentoClient;
+        create(type: string, callback: ICallback<IMediaPipeline>): IKurentoClient;
 
         /**
          * Connect the source of a media to the sink of the next one
@@ -335,7 +339,7 @@ declare module Kurento.Client {
          *
          * @throws {SyntaxError}
          */
-        connect(media: IMediaObject, callback: (err) => void): Promise<void>;
+        connect(media: IMediaObject, callback: ICallback<void>): Promise<void>;
 
         /**
          * Get a reference to the current Kurento Media Server we are connected
@@ -344,7 +348,7 @@ declare module Kurento.Client {
          *
          * @return {external:Promise}
          */
-        getServerManager(callback: (err, result: IServerManager) => void): Promise<IServerManager>;
+        getServerManager(callback: ICallback<IServerManager>): Promise<IServerManager>;
     }
 
     interface IKurentoClientOptions {
@@ -368,11 +372,11 @@ declare module Kurento.Client {
         /**
          * @param {String} ws_uri - Address of the Kurento Media Server
          */
-        new (ws_uri: string, options: IKurentoClientOptions, callback: (err, result: IKurentoClient) => void): IKurentoClient;
+        new (ws_uri: string, options: IKurentoClientOptions, callback: ICallback<IKurentoClient>): IKurentoClient;
         /**
          * @param {String} ws_uri - Address of the Kurento Media Server
          */
-        new (ws_uri: string, callback: (err, result: IKurentoClient) => void): IKurentoClient;
+        new (ws_uri: string, callback: ICallback<IKurentoClient>): IKurentoClient;
         checkType;
         MediaObjectCreator;
         register;
