@@ -22,6 +22,14 @@
 </head>
 <body>
 
+    <div class="jumbotron">
+        Примеры воспроизведения RTSP-потоков через Kurento Media Server через WebRTC
+    </div>
+
+    <label for="kurento">Адрес Kurento Media Server:</label>
+    <input id="kurento" class="form-control" placeholder="Введите адрес куренто-серера" value="10.5.6.119">
+
+
     <div id="sample-1" class="container-fluid">
         <div class="row">
             <h1>
@@ -40,11 +48,15 @@
         <div class="row">
             <div class="col-md-6">
                 <input id="info" class="form-control" value="Здесь будет информация о ходе процесса..." disabled />
+                <div class="video-with-url">
+                    <video id="video"></video>
 
-                <video id="video"></video>
-
-                <input id="rtsp" class="form-control" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
-                <input id="kurento" class="form-control" placeholder="Введите адрес куренто-серера" value="10.5.6.119">
+                    <input id="rtsp"
+                           class="form-control"
+                           type="url"
+                           placeholder="Введите адрес RTSP потока"
+                           value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
+                </div>
             </div>
             <div class="col-md-6">
                 <ul id="log-cont"></ul>
@@ -72,23 +84,39 @@
         </div>
 
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6 video-with-url">
                 <video id="video-1"></video>
-                <input id="rtsp-1" class="form-control" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
+                <input id="rtsp-1" 
+                       class="form-control" 
+                       type="url" 
+                       placeholder="Введите адрес RTSP потока" 
+                       value="rtsp://10.5.5.81/ONVIF/MediaInput?profile=Auqamed_MQ">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6 video-with-url">
                 <video id="video-2"></video>
-                <input id="rtsp-2" class="form-control" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.80:8091/grabber.sdp">
+                <input id="rtsp-2" 
+                       class="form-control" 
+                       type="url" 
+                       placeholder="Введите адрес RTSP потока" 
+                       value="rtsp://10.5.5.80:8091/grabber.sdp">
             </div>
         </div>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6 video-with-url">
                 <video id="video-3"></video>
-                <input id="rtsp-3" class="form-control" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.86/ONVIF/MediaInput?profile=Auqamed_MQ">
+                <input id="rtsp-3" 
+                       class="form-control" 
+                       type="url" 
+                       placeholder="Введите адрес RTSP потока" 
+                       value="rtsp://10.5.5.86/ONVIF/MediaInput?profile=Auqamed_MQ">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6 video-with-url">
                 <video id="video-4"></video>
-                <input id="rtsp-4" class="form-control" placeholder="Введите адрес RTSP потока" value="rtsp://10.5.5.80:8092/grabber.sdp">
+                <input id="rtsp-4" 
+                       class="form-control" 
+                       type="url" 
+                       placeholder="Введите адрес RTSP потока" 
+                       value="rtsp://10.5.5.80:8092/grabber.sdp">
             </div>
         </div>
     </div>

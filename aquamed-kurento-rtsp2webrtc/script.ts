@@ -2,15 +2,16 @@
 /// <reference path="./typings/kurento-client.d.ts" />
 /// <reference path="./typings/kurento-utils.d.ts" />
 
-var poster = './content/poster.png';
-
-var sample1 = new Sample1(),
-    sample2 = new Sample2();
+var poster = './content/poster.png',
+    sample1,
+    sample2;
 
 window.addEventListener('load', function () {
 
+    sample1 = new Sample1();
     sample1.init();
 
+    sample2 = new Sample2();
     sample2.init();
 
     initVideos();
@@ -58,17 +59,26 @@ function appendLog(logContainer, text, cssClass = '') {
  */
 class VideoWithUrlInput {
 
-    constructor(private _videoElement: HTMLVideoElement, private getUrlFunc: () => string) {
+    static get containerSelector(): string {
+        return 'video-with-url';
     }
+
+    constructor(container: HTMLDivElement) {
+        this._videoElement = container.getElementsByTagName('video')[0];
+        this._urlInput = container.getElementsByTagName('input')[0];
+    }
+
+    private _videoElement: HTMLVideoElement;
+    private _urlInput: HTMLInputElement;
+    private streamingManager = new RtspStreamingManager();
 
     getVideoElement() {
         return this._videoElement;
     }
     startStreaming(kurentoUri: string) {
-        return this.streamingManager.startStreaming(new StreamingSettings(kurentoUri, this.getUrlFunc()), this._videoElement);
+        return this.streamingManager.startStreaming(new StreamingSettings(kurentoUri, this._urlInput.value), this._videoElement);
     }
 
-    private streamingManager = new RtspStreamingManager();
 }
 
 
@@ -79,9 +89,20 @@ class VideoWithUrlInput {
  */
 class Sample {
 
+    constructor(sampleContainer: HTMLElement) {
+        this.startButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-start')[0];
+        this.pauseButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-pause')[0];
+        this.stopButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-stop')[0];
+
+        var videoWithUrlContainers = sampleContainer.getElementsByClassName(VideoWithUrlInput.containerSelector);
+        for (var i = 0; i < videoWithUrlContainers.length; i++)
+            this.videosWithUrls.push(new VideoWithUrlInput(<HTMLDivElement>videoWithUrlContainers[i]));
+    }
+
     private videosWithUrls: VideoWithUrlInput[] = [];
     private startResponses: StartStreamingResponse[] = [];
     protected startButton: HTMLButtonElement;
+    protected pauseButton: HTMLButtonElement;
     protected stopButton: HTMLButtonElement;
 
     /**
@@ -145,7 +166,7 @@ class Sample {
 class Sample1 extends Sample {
 
     constructor() {
-        super();
+        super(document.getElementById('sample-1'));
     }
 
     private videoElement: HTMLVideoElement;
@@ -161,7 +182,6 @@ class Sample1 extends Sample {
         this.stopButton.addEventListener('click', () => this.onStop());
 
         this.videoElement = <HTMLVideoElement>document.getElementById('video');
-        this.addVideoElement(new VideoWithUrlInput(this.videoElement, null));
 
         this.infoElement = document.getElementById('info');
     }
@@ -204,28 +224,11 @@ class Sample1 extends Sample {
 class Sample2 extends Sample {
 
     constructor() {
-        super();
+        super(document.getElementById('sample-2'));
     }
 
     init(): void {
         this.setStartButton(<HTMLButtonElement>document.getElementById('start-2'));
         this.setStopButton(<HTMLButtonElement>document.getElementById('stop-2'));
-
-        this.addVideoElement(
-            new VideoWithUrlInput(
-                <HTMLVideoElement>document.getElementById('video-1'),
-                () => document.getElementById('rtsp-1').getAttribute('value')));
-        this.addVideoElement(
-            new VideoWithUrlInput(
-                <HTMLVideoElement>document.getElementById('video-2'),
-                () => document.getElementById('rtsp-2').getAttribute('value')));
-        this.addVideoElement(
-            new VideoWithUrlInput(
-                <HTMLVideoElement>document.getElementById('video-3'),
-                () => document.getElementById('rtsp-3').getAttribute('value')));
-        this.addVideoElement(
-            new VideoWithUrlInput(
-                <HTMLVideoElement>document.getElementById('video-4'),
-                () => document.getElementById('rtsp-4').getAttribute('value')));
     }
 }
