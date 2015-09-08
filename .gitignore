@@ -12,3 +12,6 @@ obj/
 
 # kurento-rtsp2many
 kurento-rtsp2many/server.js
+
+# aquamed-kurento-rtsp2webrtc
+aquamed-kurento-rtsp2webrtc/script.js

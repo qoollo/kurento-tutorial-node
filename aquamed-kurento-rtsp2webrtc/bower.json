@@ -1,0 +1,21 @@
+{
+  "name": "aquamed-kurento-rtsp2webrtc",
+  "version": "6.0.0",
+  "homepage": "https://github.com/qoollo/kurento-tutorial-node",
+  "authors": [
+    "EvAlex <evalexhimself@gmail.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "kurento-client": "5.1.0",
+    "kurento-utils": "5.1.0",
+    "webrtc-adapter": "webrtc/adapter#~0.2.3"
+  }
+}

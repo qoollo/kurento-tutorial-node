@@ -1,23 +1,24 @@
+/// <reference path="../typings/es6-promise.d.ts" />
+/// <reference path="../typings/kurento-client.d.ts" />
+/// <reference path="../typings/kurento-utils.d.ts" />
 
-
-function StreamingSettings(kurentoWsUri, streamingRtsp, iceServers) {
-
-    this.kurentoWsUri = kurentoWsUri || null;
-
-    this.streamingRtsp = streamingRtsp || null;
-    
-    this.iceServers = iceServers || null;
+class StreamingSettings {
+    constructor(
+        public kurentoWsUri: string = null,
+        public streamingRtsp: string = null,
+        public iceServers: string = null) {
+    }
 }
 
-function StartStreamingResponse(webRtcPeer, pipeline, src) {
-    
-    this.webRtcPeer = webRtcPeer;
-    
-    this.pipeline = pipeline;
+class StartStreamingResponse {
 
-    this.src = src;
+    constructor(
+        public webRtcPeer: Kurento.Utils.IWebRtcPeer = null,
+        public pipeline: Kurento.Client.IMediaPipeline = null,
+        public src: string = null) {
+    }
 
-    this.stop = function () {
+    stop(): void {
         if (this.webRtcPeer) {
             this.webRtcPeer.dispose();
             this.webRtcPeer = null;
@@ -32,9 +33,12 @@ function StartStreamingResponse(webRtcPeer, pipeline, src) {
     }
 }
 
-function Error(message, data) {
-    this.message= message;
-    this.data = data;
+class KurentoClientError {
+
+    constructor(public message, public data) {
+        this.message = message;
+        this.data = data;
+    }
 }
 
 function RtspStreamingManager() {
@@ -42,24 +46,11 @@ function RtspStreamingManager() {
         if (!(streamingSettings instanceof StreamingSettings)
             || !streamingSettings.kurentoWsUri
             || !streamingSettings.streamingRtsp)
-            throw new Error('Incorrect streaming settings', streamingSettings);
+            throw new KurentoClientError('Incorrect streaming settings', streamingSettings);
 
         return new Promise(function (startResponse, startReject) {
 
-            var responseData = {
-                webRtcPeer: null,
-                pipeline: null,
-                stop: function () {
-                    if (this.webRtcPeer) {
-                        this.webRtcPeer.dispose();
-                        this.webRtcPeer = null;
-                    }
-                    if (this.pipeline) {
-                        this.pipeline.release();
-                        this.pipeline = null;
-                    }
-                }
-            };
+            var responseData = new StartStreamingResponse();
 
             var videoElementWrapper = videoElement || { };
 
@@ -71,40 +62,40 @@ function RtspStreamingManager() {
 
                 return new Promise(function (resolve, reject) {
 
-                    kurentoClient(streamingSettings.kurentoWsUri, function (error, kurentoClient) {
-                        if (error) reject(new Error('An error occurred while creating kurento client', error));
+                    new kurentoClient(streamingSettings.kurentoWsUri, function (error, kurentoClient) {
+                        if (error) reject(new KurentoClientError('An error occurred while creating kurento client', error));
 
                         kurentoClient.create("MediaPipeline", function (error, p) {
-                            if (error) reject(new Error('An error occurred while creating media pipeline', error));
+                            if (error) reject(new KurentoClientError('An error occurred while creating media pipeline', error));
 
-                            responseData.pipeline = pipeline = p;
+                            responseData.pipeline = p;
 
-                            createPlayerEndpoint(pipeline, sdpOffer, streamingSettings.streamingRtsp, responseData)
+                            createPlayerEndpoint(sdpOffer, streamingSettings.streamingRtsp, responseData)
                                 .then(resolve, reject);
                             
                             //pipeline.create("PlayerEndpoint", { uri: streamingSettings.streamingRtsp }, function (error, player) {
-                            //    if (error) reject(new Error('An error occurred while creating player endpoint', error));
+                            //    if (error) reject(new KurentoClientError('An error occurred while creating player endpoint', error));
 
                             //    pipeline.create("WebRtcEndpoint", function (error, webRtc) {
-                            //        if (error) reject(new Error('An error occurred while creating WebRTC endpoint', error));
+                            //        if (error) reject(new KurentoClientError('An error occurred while creating WebRTC endpoint', error));
 
                             //        webRtc.processOffer(sdpOffer, function (error, sdpAnswer) {
-                            //            if (error) reject(new Error('An error occurred while process offer', error));
+                            //            if (error) reject(new KurentoClientError('An error occurred while process offer', error));
 
                             //            responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
                             //        });
 
                             //        pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
-                            //            if (error) reject(new Error('An error occurred while creating GStreamer filter', error));
+                            //            if (error) reject(new KurentoClientError('An error occurred while creating GStreamer filter', error));
 
                             //            player.connect(gstFilter, function (error) {
-                            //                if (error) reject(new Error('An error occurred while player is connected', error));
+                            //                if (error) reject(new KurentoClientError('An error occurred while player is connected', error));
 
                             //                gstFilter.connect(webRtc, function (error) {
-                            //                    if (error) reject(new Error('An error occurred while GStreamer filter is connected', error));
+                            //                    if (error) reject(new KurentoClientError('An error occurred while GStreamer filter is connected', error));
 
                             //                    player.play(function (error) {
-                            //                        if (error) reject(new Error('An error occurred while player started', error));
+                            //                        if (error) reject(new KurentoClientError('An error occurred while player started', error));
 
                             //                        resolve(); // OK!
                             //                    });
@@ -118,7 +109,7 @@ function RtspStreamingManager() {
                 })
             }, function (error) {
                 return new Promise(function (response, reject) {
-                    reject(new Error('An error occurred while starting receiving', error))
+                    reject(new KurentoClientError('An error occurred while starting receiving', error))
                 })
             }).then(function () {
                 startResponse(new StartStreamingResponse(responseData.webRtcPeer, responseData.pipeline, videoElementWrapper.src));
@@ -130,50 +121,50 @@ function RtspStreamingManager() {
         })
     }
 
-    function createPlayerEndpoint(pipeline, sdpOffer, rtspUrls, responseData) {
+    function createPlayerEndpoint(sdpOffer, rtspUrls, responseData: StartStreamingResponse) {
         if (typeof rtspUrls === 'string')
             rtspUrls = [rtspUrls];
         var promises = [];
         for (var i = 0; i < rtspUrls.length; i++) {
             promises.push(new Promise(function (resolve, reject) {
-                pipeline.create("PlayerEndpoint", { uri: rtspUrls[i] }, function (error, player) {
+                responseData.pipeline.create("PlayerEndpoint", { uri: rtspUrls[i] }, function (error, player) {
                     if (error)
-                        reject(new Error('An error occurred while creating player endpoint', error));
-                    createWebRtcEndpoint(pipeline, sdpOffer, player, responseData).then(resolve, reject);
+                        reject(new KurentoClientError('An error occurred while creating player endpoint', error));
+                    createWebRtcEndpoint(sdpOffer, player, responseData).then(resolve, reject);
                 });
             }));
         }
         return Promise.all(promises);
     }
 
-    function createWebRtcEndpoint(pipeline, sdpOffer, player, responseData) {
+    function createWebRtcEndpoint(sdpOffer, player, responseData: StartStreamingResponse) {
         return new Promise(function (resolve, reject) {
-            pipeline.create("WebRtcEndpoint", function (error, webRtc) {
+            responseData.pipeline.create("WebRtcEndpoint", function (error, webRtc) {
                 if (error)
-                    reject(new Error('An error occurred while creating WebRTC endpoint', error));
+                    reject(new KurentoClientError('An error occurred while creating WebRTC endpoint', error));
 
                 webRtc.processOffer(sdpOffer, function (error, sdpAnswer) {
                     if (error)
-                        reject(new Error('An error occurred while process offer', error));
+                        reject(new KurentoClientError('An error occurred while process offer', error));
 
                     responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
                 });
 
-                pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
+                responseData.pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, function (error, gstFilter) {
                     if (error)
-                        reject(new Error('An error occurred while creating GStreamer filter', error));
+                        reject(new KurentoClientError('An error occurred while creating GStreamer filter', error));
 
                     player.connect(gstFilter, function (error) {
                         if (error)
-                            reject(new Error('An error occurred while player is connected', error));
+                            reject(new KurentoClientError('An error occurred while player is connected', error));
 
                         gstFilter.connect(webRtc, function (error) {
                             if (error)
-                                reject(new Error('An error occurred while GStreamer filter is connected', error));
+                                reject(new KurentoClientError('An error occurred while GStreamer filter is connected', error));
 
                             player.play(function (error) {
                                 if (error)
-                                    reject(new Error('An error occurred while player started', error));
+                                    reject(new KurentoClientError('An error occurred while player started', error));
 
                                 resolve(); // OK!
                             });

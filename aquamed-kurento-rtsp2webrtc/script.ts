@@ -1,4 +1,7 @@
-﻿
+﻿/// <reference path="./js/aquamed-kurento-rtsp2webrtc.ts" />
+/// <reference path="./typings/kurento-client.d.ts" />
+/// <reference path="./typings/kurento-utils.d.ts" />
+
 var poster = './content/poster.png';
 
 var sample1 = new Sample1(),
@@ -37,7 +40,7 @@ function initalizeLogContainer(logContainer) {
     window.onerror = function (err) { console.error(err) };
 }
 
-function appendLog(logContainer, text, cssClass) {
+function appendLog(logContainer, text, cssClass = '') {
     var li = document.createElement('li');
     li.innerText = text;
     li.className = cssClass || '';
@@ -103,7 +106,7 @@ function Sample(sampleContainer) {
         }
     }
     this.getKurentoUri = function () {
-        return 'ws://' + document.getElementById('kurento').value + ':8888/kurento';
+        return 'ws://' + document.getElementById('kurento').getAttribute('value') + ':8888/kurento';
     }
 
     this.startPlayback = function () {
@@ -177,8 +180,8 @@ function Sample1() {
 
         self.showSpinner();
 
-        var rtsp = document.getElementById('rtsp').value;
-        var kurentoUri = 'ws://' + document.getElementById('kurento').value + ':8888/kurento';
+        var rtsp = document.getElementById('rtsp').getAttribute('value');
+        var kurentoUri = 'ws://' + document.getElementById('kurento').getAttribute('value') + ':8888/kurento';
 
         infoElement.value = 'Запуск. Ждите...';
 
@@ -225,19 +228,19 @@ function Sample2() {
         self.addVideoElement(
             new VideoWithUrlInput(
                 document.getElementById('video-1'),
-                function () { return document.getElementById('rtsp-1').value }));
+                function () { return document.getElementById('rtsp-1').getAttribute('value') }));
         self.addVideoElement(
             new VideoWithUrlInput(
                 document.getElementById('video-2'),
-                function () { return document.getElementById('rtsp-2').value }));
+                function () { return document.getElementById('rtsp-2').getAttribute('value') }));
         self.addVideoElement(
             new VideoWithUrlInput(
                 document.getElementById('video-3'),
-                function () { return document.getElementById('rtsp-3').value }));
+                function () { return document.getElementById('rtsp-3').getAttribute('value') }));
         self.addVideoElement(
             new VideoWithUrlInput(
                 document.getElementById('video-4'),
-                function () { return document.getElementById('rtsp-4').value }));
+                function () { return document.getElementById('rtsp-4').getAttribute('value') }));
     }
 }
 Sample2.prototype = Object.create(Sample.prototype);
