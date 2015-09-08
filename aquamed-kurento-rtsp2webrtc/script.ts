@@ -88,6 +88,7 @@ class VideoWithUrlInput {
 class Sample {
 
     constructor(sampleContainer: HTMLElement) {
+
         this.startButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-start')[0];
         this.pauseButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-pause')[0];
         this.stopButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-stop')[0];
@@ -103,6 +104,11 @@ class Sample {
     protected pauseButton: HTMLButtonElement;
     protected stopButton: HTMLButtonElement;
 
+    protected onStarting: () => void;
+    protected onStartSuccess: (responses: StartStreamingResponse[]) => void;
+    protected onStartFail: (err) => void;
+    protected onStopClick: () => void;
+
     showPoster() {
         this.videosWithUrls.forEach(v => v.getVideoElement().poster = poster);
     }
@@ -114,6 +120,9 @@ class Sample {
     }
 
     startPlayback(): void {
+        if (this.onStarting)
+            this.onStarting();
+
         this.startButton.disabled = true;
 
         this.showSpinner();
@@ -126,11 +135,15 @@ class Sample {
                 responses => {
                     responses.forEach(r => this.startResponses.push(r));
                     this.stopButton.disabled = false;
+                    if (this.onStartSuccess)
+                        this.onStartSuccess(responses);
                 },
                 error => {
                     console.error(error);
                     this.showPoster();
                     this.startButton.disabled = false;
+                    if (this.onStartFail)
+                        this.onStartFail(error);
                 });
     }
 
@@ -144,6 +157,9 @@ class Sample {
         this.showPoster();
         this.startButton.disabled = false;
         this.stopButton.disabled = true;
+
+        if (this.onStopClick)
+            this.onStopClick();
     }
 }
 
@@ -152,49 +168,30 @@ class Sample1 extends Sample {
     constructor() {
         super(document.getElementById('sample-1'));
 
-        this.startButton.addEventListener('click', () => this.onStart());
-        this.stopButton.addEventListener('click', () => this.onStop());
-        this.videoElement = this.videosWithUrls[0].getVideoElement();
         this.infoElement = document.getElementById('info');
+
+        this.onStarting = () => this.handleStarting();
+        this.onStartSuccess = r => this.handleStartSuccess(r);
+        this.onStartFail = e => this.handleStartFail(e);
+        this.onStopClick = () => this.handleStopClick();
     }
 
-    private videoElement: HTMLVideoElement;
     private infoElement;
-    private startResponse = null;
-    private streamingManager = new RtspStreamingManager();
-    
-    private onStart(): void {
-        this.startButton.disabled = true;
 
-        this.showSpinner();
-
-        var rtsp = document.getElementById('rtsp').getAttribute('value');
-        var kurentoUri = 'ws://' + document.getElementById('kurento').getAttribute('value') + ':8888/kurento';
-
+    private handleStarting(): void {
         this.infoElement.value = 'Запуск. Ждите...';
-
-        var start = this.streamingManager.startStreaming(new StreamingSettings(kurentoUri, rtsp), this.videoElement);
-        start.then(function (response) {
-            this.startResponse = response;
-            this.stopButton.disabled = false;
-            this.infoElement.value = 'Готово!';
-        }, function (error) {
-            console.error(error);
-            this.infoElement.value = 'Ошибка! Смотрите консоль.';
-            this.showPoster();
-            this.startButton.disabled = false;
-        })
     }
 
-    onStop(): void {
-        if (!this.startResponse) return;
+    private handleStartSuccess(responses: StartStreamingResponse[]): void {
+            this.infoElement.value = 'Готово!';
+    }
+    
+    private handleStartFail(err): void {
+            this.infoElement.value = 'Ошибка! Смотрите консоль.';
+    }
 
-        this.startResponse.stop();
-        this.videoElement.src = '';
-        this.startButton.disabled = false;
-        this.stopButton.disabled = true;
+    private handleStopClick(): void {
         this.infoElement.value = 'Остановлено.';
-        this.showPoster();
     }
 }
 
