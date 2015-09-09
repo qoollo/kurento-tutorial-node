@@ -91,18 +91,10 @@ class RtspStreamingManager {
     }
 
     private createPlayerEndpoint(sdpOffer, rtspUrls: string|string[], responseData: StartStreamingResponse) {
-        if (typeof rtspUrls === 'string')
-            rtspUrls = [<string>rtspUrls];
-        var promises = [];
-        for (var i = 0; i < rtspUrls.length; i++) {
-            promises.push(new Promise((resolve, reject) => {
-                responseData.pipeline.create("PlayerEndpoint", { uri: rtspUrls[i] }, (error, player) => {
-                    if (error)
-                        reject(new KurentoClientError('An error occurred while creating player endpoint', error));
-                    this.createWebRtcEndpoint(sdpOffer, player, responseData).then(resolve, reject);
-                });
-            }));
-        }
+        var urlArray = typeof rtspUrls === 'string' ? [<string>rtspUrls] : <string[]>rtspUrls,
+            promises = urlArray.map(url =>
+                responseData.pipeline.create("PlayerEndpoint", { uri: url })
+                    .then(playerEndpoint => this.createWebRtcEndpoint(sdpOffer, playerEndpoint, responseData)));
         return Promise.all(promises);
     }
 
