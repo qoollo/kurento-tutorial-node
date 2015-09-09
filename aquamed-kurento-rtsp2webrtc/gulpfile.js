@@ -15,6 +15,6 @@ gulp.task('default', function () {
 		}));
 
     return tsResult.js
-        .pipe(sourcemaps.write())
+        .pipe(sourcemaps.write({ includeContent: false, sourceRoot: './' }))
 		.pipe(gulp.dest('./'));
 });

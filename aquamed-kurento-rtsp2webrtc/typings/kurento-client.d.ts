@@ -335,7 +335,7 @@ declare module Kurento.Client {
          * @return {module:KurentoClientApi~KurentoClient} The Kurento client itself
          */
         create(type: string, callback: ICallback<IMediaPipeline>): IKurentoClient;
-        create(type: 'MediaPipeline', callback: ICallback<IMediaPipeline>): IKurentoClient;
+        create(type: 'MediaPipeline', callback?: ICallback<IMediaPipeline>): IKurentoClient;
 
         /**
          * Connect the source of a media to the sink of the next one

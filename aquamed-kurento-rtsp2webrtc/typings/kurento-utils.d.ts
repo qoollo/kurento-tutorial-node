@@ -36,11 +36,11 @@ declare module Kurento.Utils {
     }
 
     interface IWebRtcPeerConstructor {
-        new (mode, localVideo, remoteVideo, onsdpoffer, onerror, videoStream, audioStream): IWebRtcPeer;
-        start(mode, localVideo, remoteVideo, onSdp, onerror, mediaConstraints, videoStream, audioStream, server, options): IWebRtcPeer;
-        startRecvOnly(remoteVideo: HTMLVideoElement, onSdp, onError, mediaConstraints?, server?, options?): IWebRtcPeer;
-        startSendOnly(localVideo: HTMLVideoElement, onSdp, onError, mediaConstraints?, server?, options?): IWebRtcPeer;
-        startSendRecv(localVideo: HTMLVideoElement, remoteVideo: HTMLVideoElement, onSdp, onError, mediaConstraints?, server?, options?): IWebRtcPeer;
+        new (mode, localVideo, remoteVideo, onsdpoffer: (sdpOffer: string) => void, onerror, videoStream, audioStream): IWebRtcPeer;
+        start(mode, localVideo, remoteVideo, onSdp: (sdpOffer: string) => void, onerror, mediaConstraints, videoStream, audioStream, server, options): IWebRtcPeer;
+        startRecvOnly(remoteVideo: HTMLVideoElement, onSdp?: (sdpOffer: string) => void, onError?, mediaConstraints?, server?, options?): IWebRtcPeer;
+        startSendOnly(localVideo: HTMLVideoElement, onSdp: (sdpOffer: string) => void, onError, mediaConstraints?, server?, options?): IWebRtcPeer;
+        startSendRecv(localVideo: HTMLVideoElement, remoteVideo: HTMLVideoElement, onSdp: (sdpOffer: string) => void, onError, mediaConstraints?, server?, options?): IWebRtcPeer;
     }
 
     interface IKurentoUtils {
