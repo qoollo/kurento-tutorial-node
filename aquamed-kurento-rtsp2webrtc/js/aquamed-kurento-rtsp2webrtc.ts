@@ -99,40 +99,66 @@ class RtspStreamingManager {
     }
 
     private createWebRtcEndpoint(sdpOffer, player: Kurento.Client.IPlayerEndpoint, responseData: StartStreamingResponse) {
-        return new Promise((resolve, reject) => {
-            responseData.pipeline.create("WebRtcEndpoint", (error, webRtc) => {
-                if (error)
-                    reject(new KurentoClientError('An error occurred while creating WebRTC endpoint', error));
+        return new Promise((resolve, reject) =>
+            responseData.pipeline.create('WebRtcEndpoint')
+                .then(webRtc => {
 
-                webRtc.processOffer(sdpOffer, (error, sdpAnswer) => {
-                    if (error)
-                        reject(new KurentoClientError('An error occurred while process offer', error));
+                    var promises = [];
 
-                    responseData.webRtcPeer.processSdpAnswer(sdpAnswer);
-                });
+                    /* error from WebRtcPeer.processSdpAnswer() is only available in errorCallback passed to WebRtcPeer constructor */
+                    promises.push(
+                        webRtc.processOffer(sdpOffer).then(sdpAnswer =>
+                            responseData.webRtcPeer.processSdpAnswer(sdpAnswer)));
 
-                responseData.pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: 'VIDEO' }, (error, gstFilter) => {
-                    if (error)
-                        reject(new KurentoClientError('An error occurred while creating GStreamer filter', error));
+                    promises.push(
+                        responseData.pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: 'VIDEO' })
+                            .then(gstFilter => {
+                                player.connect(gstFilter, error => {
+                                    if (error)
+                                        reject(new KurentoClientError('An error occurred while player is connected', error));
 
-                    player.connect(gstFilter, error => {
-                        if (error)
-                            reject(new KurentoClientError('An error occurred while player is connected', error));
+                                    gstFilter.connect(webRtc, error => {
+                                        if (error)
+                                            reject(new KurentoClientError('An error occurred while GStreamer filter is connected', error));
 
-                        gstFilter.connect(webRtc, error => {
-                            if (error)
-                                reject(new KurentoClientError('An error occurred while GStreamer filter is connected', error));
+                                        player.play(error => {
+                                            if (error)
+                                                reject(new KurentoClientError('An error occurred while player started', error));
 
-                            player.play(error => {
-                                if (error)
-                                    reject(new KurentoClientError('An error occurred while player started', error));
+                                            resolve(); // OK!
+                                        });
+                                    });
+                                });
+                            }));
 
-                                resolve(); // OK!
-                            });
-                        });
-                    });
-                });
-            });
-        });
+                    return Promise.all(promises);
+                }));
     }
 }
+
+/* ****************** */
+/* Promise playground */
+/* ****************** */
+
+/*
+
+function fetch(url): Promise<any> { return null; };
+
+var pf1 = function () {
+    return new Promise(function (resolve, reject) {
+        resolve('hello');
+    });
+}
+var pf2 = function (res) {
+    return Promise.all(
+        [new Promise(function (resolve, reject) {
+            resolve(res + ' world');
+        }),
+        fetch('https://www.google.ru/search?q=foo')]);
+}
+
+pf1().then(pf2).then(function (res) {
+    console.log('Final result:', res[0], res[1].status);
+});
+
+*/

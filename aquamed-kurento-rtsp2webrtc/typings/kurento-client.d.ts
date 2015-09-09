@@ -224,7 +224,7 @@ declare module Kurento.Client {
          * @return {external:Promise}
          *  Resolved with the chosen configuration from the ones stated in the SDP offer
          */
-        processOffer(offer: string, callback: ICallback<string>): Promise<string>;
+        processOffer(offer: string, callback?: ICallback<string>): Promise<string>;
     }
 
     /**
