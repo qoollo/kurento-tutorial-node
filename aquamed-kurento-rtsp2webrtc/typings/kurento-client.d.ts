@@ -121,7 +121,7 @@ declare module Kurento.Client {
          * @return {external:Promise}
          */
         connect(sink: IMediaElement, mediaType: string, sourceMediaDescription: string, sinkMediaDescription: string, callback: ICallback<void>): Promise<void>;
-        connect(sink: IMediaElement, callback: ICallback<void>): Promise<void>;
+        connect(sink: IMediaElement, callback?: ICallback<void>): Promise<void>;
     }
 
 
@@ -294,7 +294,7 @@ declare module Kurento.Client {
         /**
          * Starts to send data to the endpoint :rom:cls:`MediaSource`
          */
-        play(callback: ICallback<void>): Promise<void>;
+        play(callback?: ICallback<void>): Promise<void>;
     }
 
     interface IRecorderEndpoint extends IUriEndpoint {

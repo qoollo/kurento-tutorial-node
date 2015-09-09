@@ -99,40 +99,24 @@ class RtspStreamingManager {
     }
 
     private createWebRtcEndpoint(sdpOffer, player: Kurento.Client.IPlayerEndpoint, responseData: StartStreamingResponse) {
-        return new Promise((resolve, reject) =>
-            responseData.pipeline.create('WebRtcEndpoint')
-                .then(webRtc => {
+        return responseData.pipeline.create('WebRtcEndpoint')
+            .then(webRtc => {
 
-                    var promises = [];
+                var promises = [];
 
-                    /* error from WebRtcPeer.processSdpAnswer() is only available in errorCallback passed to WebRtcPeer constructor */
-                    promises.push(
-                        webRtc.processOffer(sdpOffer).then(sdpAnswer =>
-                            responseData.webRtcPeer.processSdpAnswer(sdpAnswer)));
+                /* error from WebRtcPeer.processSdpAnswer() is only available in errorCallback passed to WebRtcPeer constructor */
+                promises.push(
+                    webRtc.processOffer(sdpOffer).then(sdpAnswer =>
+                        responseData.webRtcPeer.processSdpAnswer(sdpAnswer)));
 
-                    promises.push(
-                        responseData.pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: 'VIDEO' })
-                            .then(gstFilter => {
-                                player.connect(gstFilter, error => {
-                                    if (error)
-                                        reject(new KurentoClientError('An error occurred while player is connected', error));
+                promises.push(
+                    responseData.pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: 'VIDEO' })
+                        .then(gstFilter =>
+                            player.connect(gstFilter).then(() => gstFilter.connect(webRtc)))
+                        .then(() => player.play()));
 
-                                    gstFilter.connect(webRtc, error => {
-                                        if (error)
-                                            reject(new KurentoClientError('An error occurred while GStreamer filter is connected', error));
-
-                                        player.play(error => {
-                                            if (error)
-                                                reject(new KurentoClientError('An error occurred while player started', error));
-
-                                            resolve(); // OK!
-                                        });
-                                    });
-                                });
-                            }));
-
-                    return Promise.all(promises);
-                }));
+                return Promise.all(promises);
+            });
     }
 }
 
@@ -154,11 +138,21 @@ var pf2 = function (res) {
         [new Promise(function (resolve, reject) {
             resolve(res + ' world');
         }),
-        fetch('https://www.google.ru/search?q=foo')]);
+            fetch('https://www.google.ru/search?q=foo').then(pf3).then(pf4)]);
+}
+var pf3 = function (resp) {
+    return new Promise(function (resolve, reject) {
+        resolve('Status:' + resp.status);
+    });
+}
+var pf4 = function (statusStr) {
+    return new Promise(function (resolve, reject) {
+        resolve('Wrapped ' + statusStr);
+    });
 }
 
 pf1().then(pf2).then(function (res) {
-    console.log('Final result:', res[0], res[1].status);
+    console.log('Final result:', res[0], res[1]);
 });
 
 */
