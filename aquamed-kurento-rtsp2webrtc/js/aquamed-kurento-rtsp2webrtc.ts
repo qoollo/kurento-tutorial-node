@@ -4,13 +4,9 @@
 
 class StreamingSettings {
     constructor(
-        public kurentoWsUri: string = null,
-        public streamingRtsp: string|string[] = null,
+        public kurentoWsUri: string,
+        public rtspUrl: string,
         public iceServers: string = null) {
-    }
-
-    get rtspUrls(): string[] {
-        return typeof this.streamingRtsp === 'string' ? [<string>this.streamingRtsp] : <string[]>this.streamingRtsp
     }
 }
 
@@ -118,7 +114,7 @@ class RtspStreamingManager {
         this.checkDisposed();
         if (!(streamingSettings instanceof StreamingSettings)
             || !streamingSettings.kurentoWsUri
-            || !streamingSettings.streamingRtsp)
+            || !streamingSettings.rtspUrl)
             throw new KurentoClientError('Incorrect streaming settings', streamingSettings);
 
         return new Promise((resolve, reject) => {
@@ -144,7 +140,7 @@ class RtspStreamingManager {
 
                 this.createMediaPipelineCb(kurentoClient, (err, mediaPipeline) => {
                     responseData.pipeline = mediaPipeline;
-                    this.createPlayerToWebRtcBundles(mediaPipeline, streamingSettings.rtspUrls)
+                    this.createPlayerToWebRtcBundle(mediaPipeline, streamingSettings.rtspUrl)
                         .then(bundles => {
                             Promise.all(bundles.map(b => b.playerEndpoint.play()));
                             bundles.forEach(b => b.webRtcEndpoint.processOffer(sdpOffer).then(sdpAnswer =>
@@ -226,18 +222,18 @@ class RtspStreamingManager {
         });
     }
 
-    private createPlayerToWebRtcBundles(mediaPipeline: Kurento.Client.IMediaPipeline, rtspUrls: string[]): Promise<PlayerToWebRtcBundle[]> {
-        this.logger.debug('Creating ' + rtspUrls.length + ' PlayerEndpoints and WebRtcEndpoints...');
+    private createPlayerToWebRtcBundle(mediaPipeline: Kurento.Client.IMediaPipeline, rtspUrl: string): Promise<PlayerToWebRtcBundle[]> {
+        this.logger.debug('Creating PlayerEndpoint and WebRtcEndpoint...');
 
         return new Promise((resolve, reject) => {
-            this.createPlayerAndWebRtcEndpointsCb(rtspUrls, mediaPipeline, (err, res) => {
+            this.createPlayerAndWebRtcEndpointCb(rtspUrl, mediaPipeline, (err, res) => {
                 if (err) {
-                    this.logger.error('Failed to create ' + rtspUrls.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.', err);
+                    this.logger.error('Failed to create ' + rtspUrl.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.', err);
                     return reject(err);
                 }
 
-                this.logger.debug(rtspUrls.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.');
-                this.connectPlayerEndpointsToWebRtcEndpoints(res.playerEndpoints, res.webRtcEndpoints, mediaPipeline)
+                this.logger.debug(rtspUrl.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.');
+                this.connectPlayerEndpointToWebRtcEndpoint(res.playerEndpoint, res.webRtcEndpoint, mediaPipeline)
                     .then(resolve, reject);
             });
         });
@@ -254,34 +250,32 @@ class RtspStreamingManager {
         //});
     }
 
-    private createPlayerAndWebRtcEndpointsCb(
-        rtspUrls: string[],
+    private createPlayerAndWebRtcEndpointCb(
+        rtspUrls: string,
         mediaPipeline: Kurento.Client.IMediaPipeline,
         callback: (err, result?: {
-            playerEndpoints: Kurento.Client.IPlayerEndpoint[],
-            webRtcEndpoints: Kurento.Client.IWebRtcEndpoint[]
+            playerEndpoint?: Kurento.Client.IPlayerEndpoint,
+            webRtcEndpoint?: Kurento.Client.IWebRtcEndpoint
         }) => void): void {
 
-        var result = {
-            playerEndpoints: [],
-            webRtcEndpoints: []
-        }
-        for (var i = 0; i < rtspUrls.length; i++) {
-            mediaPipeline.create("PlayerEndpoint", { uri: rtspUrls[i] }, (err, r) => {
-                if (err)
-                    return callback(err);
-                result.playerEndpoints.push(r);
-                if (result.playerEndpoints.length == result.webRtcEndpoints.length && result.playerEndpoints.length == rtspUrls.length)
-                    callback(null, result);
-            });
-            mediaPipeline.create('WebRtcEndpoint', (err, r) => {
-                if (err)
-                    return callback(err);
-                result.webRtcEndpoints.push(r);
-                if (result.playerEndpoints.length == result.webRtcEndpoints.length && result.playerEndpoints.length == rtspUrls.length)
-                    callback(null, result);
-            });
-        }
+        var result: {
+            playerEndpoint?: Kurento.Client.IPlayerEndpoint,
+            webRtcEndpoint?: Kurento.Client.IWebRtcEndpoint
+        } = {};
+        mediaPipeline.create("PlayerEndpoint", { uri: rtspUrls }, (err, r) => {
+            if (err)
+                return callback(err);
+            result.playerEndpoint = r;
+            if (result.webRtcEndpoint)
+                callback(null, result);
+        });
+        mediaPipeline.create('WebRtcEndpoint', (err, r) => {
+            if (err)
+                return callback(err);
+            result.webRtcEndpoint = r;
+            if (result.playerEndpoint)
+                callback(null, result);
+        });
     }
 
     private createPlayerEndpoints(rtspUrls: string[], mediaPipeline: Kurento.Client.IMediaPipeline): Promise<Kurento.Client.IPlayerEndpoint[]> {
@@ -293,23 +287,6 @@ class RtspStreamingManager {
         var promises: Promise<Kurento.Client.IWebRtcEndpoint>[] = [];
         for (var i = 0; i < count; i++)
             promises.push(mediaPipeline.create('WebRtcEndpoint'));
-        return Promise.all(promises);
-    }
-
-    private connectPlayerEndpointsToWebRtcEndpoints(
-        playerEndpoints: Kurento.Client.IPlayerEndpoint[],
-        webRtcEndpoints: Kurento.Client.IWebRtcEndpoint[],
-        mediaPipeline: Kurento.Client.IMediaPipeline): Promise<PlayerToWebRtcBundle[]> {
-
-        if (playerEndpoints.length != webRtcEndpoints.length) {
-            if (playerEndpoints.length < webRtcEndpoints.length)
-                console.warn('Method connectPlayerEndpointsToWebRtcEndpoints() called with suspicious arguments: playerEndpoints.length is less than webRtcEndpoints.length.');
-            else
-                throw new Error('Method connectPlayerEndpointsToWebRtcEndpoints() called with wrong arguments: playerEndpoints.length is greater than webRtcEndpoints.length.');
-        }
-
-        var promises = playerEndpoints.map((pe, i) => this.connectPlayerEndpointToWebRtcEndpoint(pe, webRtcEndpoints[i], mediaPipeline));
-
         return Promise.all(promises);
     }
 
