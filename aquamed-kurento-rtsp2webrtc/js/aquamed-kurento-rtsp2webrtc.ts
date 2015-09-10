@@ -67,7 +67,38 @@ class KurentoClientError {
     }
 }
 
+interface ILogger {
+    log(message?: any, ...optionalParams: any[]): void;
+    debug(message?: string, ...optionalParams: any[]): void;
+    warn(message?: any, ...optionalParams: any[]): void;
+    info(message?: any, ...optionalParams: any[]): void;
+    error(message?: any, ...optionalParams: any[]): void;
+    time(timerName?: string): void;
+    timeEnd(timerName?: string): void;
+
+    /*
+    clear(): void;
+    count(countTitle?: string): void;
+    dir(value?: any, ...optionalParams: any[]): void;
+    dirxml(value: any): void;
+    group(groupTitle?: string): void;
+    groupCollapsed(groupTitle?: string): void;
+    groupEnd(): void;
+    msIsIndependentlyComposed(element: Element): boolean;
+    profile(reportName?: string): void;
+    profileEnd(): void;
+    select(element: Element): void;
+    trace(): void;
+    */
+}
+
 class RtspStreamingManager {
+
+    constructor(logger: ILogger = console) {
+        this.logger = logger;
+    }
+
+    private logger: ILogger;
 
 
     startStreaming(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<StartStreamingResponse> {
@@ -76,70 +107,172 @@ class RtspStreamingManager {
             || !streamingSettings.streamingRtsp)
             throw new KurentoClientError('Incorrect streaming settings', streamingSettings);
 
-        return new Promise((startResponse, startReject) => {
+        return new Promise((resolve, reject) => {
 
             var responseData = new StartStreamingResponse();
 
             this.createWebRtcPeerAndGetSdpOffer(videoElement, responseData)
-                .then(sdpOffer =>
-                    this.createKurentoClient(streamingSettings)
-                        .then(kurentoClient => this.createMediaPipeline(kurentoClient)
-                            .then(mediaPipeline => {
-                                responseData.pipeline = mediaPipeline;
-                                return this.createPlayerToWebRtcBundles(mediaPipeline, streamingSettings.rtspUrls);
-                            }))
-                        .then(bundles => {
-                            Promise.all(bundles.map(b => b.playerEndpoint.play()));
-                            bundles.forEach(b => b.webRtcEndpoint.processOffer(sdpOffer).then(sdpAnswer =>
-                                responseData.webRtcPeer.processSdpAnswer(sdpAnswer)));
-                        }))
-                .then(() => responseData.src = videoElement.src,
+                .then(sdpOffer => this.processSdpOfferAndPlay(sdpOffer, streamingSettings, responseData))
+                .then(() => { responseData.src = videoElement.src; resolve(); },
                     error => {
                         responseData.stop();
-                        startReject(error);
+                        reject(error);
                     })
 
         })
     }
 
-    private createKurentoClient(streamingSettings: StreamingSettings): Promise<Kurento.Client.IKurentoClient> {
-        return new Promise((resolve, reject) =>
-            new kurentoClient(streamingSettings.kurentoWsUri, (error, kurentoClient) => {
-                if (error)
-                    reject(new KurentoClientError('An error occurred while creating kurento client', error));
-                else
-                    resolve(kurentoClient);
-            }));
-    }
+    private processSdpOfferAndPlay(sdpOffer: string, streamingSettings: StreamingSettings, responseData: StartStreamingResponse): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this.createKurentoClientCb(streamingSettings, (err, kurentoClient) => {
+                if (err)
+                    reject(err);
 
-    private createMediaPipeline(kurentoClient: Kurento.Client.IKurentoClient): Promise<Kurento.Client.IMediaPipeline> {
-        return new Promise((resolve, reject) => {
-            kurentoClient.create("MediaPipeline", (error, p) => {
-                if (error)
-                    reject(new KurentoClientError('An error occurred while creating media pipeline', error));
-                else
-                    resolve(p);
+                this.createMediaPipelineCb(kurentoClient, (err, mediaPipeline) => {
+                    responseData.pipeline = mediaPipeline;
+                    this.createPlayerToWebRtcBundles(mediaPipeline, streamingSettings.rtspUrls)
+                        .then(bundles => {
+                            Promise.all(bundles.map(b => b.playerEndpoint.play()));
+                            bundles.forEach(b => b.webRtcEndpoint.processOffer(sdpOffer).then(sdpAnswer =>
+                                responseData.webRtcPeer.processSdpAnswer(sdpAnswer)));
+                        })
+                        .then(resolve, reject);
+                });
             });
         });
     }
 
     private createWebRtcPeerAndGetSdpOffer(videoElement: HTMLVideoElement, responseData: StartStreamingResponse): Promise<string> {
+        this.logger.debug('Creating WebRtcPeer and getting SDP Offer...');
+        return new Promise((resolve, reject) => {
+            responseData.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(
+                videoElement,
+                sdpOffer => {
+                    this.logger.debug('Received SDP Offer.');
+                    resolve(sdpOffer);
+                },
+                err => {
+                    this.logger.error('Error in WebRtcPeer.', err);
+                    reject(err);
+                });
+            this.logger.debug('WebRtcPeer created successfully...I guess.');
+        });
+    }
+
+    private createKurentoClientCb(streamingSettings: StreamingSettings, callback: (error: any, result: Kurento.Client.IKurentoClient) => void): void {
+        this.logger.debug('Creating KurentoClient...');
+        new kurentoClient(streamingSettings.kurentoWsUri, (error, kurentoClient) => {
+            if (error)
+                this.logger.error('Failed to create KurentoClient.');
+            else
+                this.logger.debug('KurentoClient created successfully.');
+
+            callback(error, kurentoClient);
+        });
+    }
+
+    private createKurentoClient(streamingSettings: StreamingSettings): Promise<Kurento.Client.IKurentoClient> {
+        this.logger.debug('Creating KurentoClient...');
         return new Promise((resolve, reject) =>
-            responseData.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(videoElement, resolve, reject));
+            new kurentoClient(streamingSettings.kurentoWsUri, (error, kurentoClient) => {
+                if (error) {
+                    this.logger.error('Failed to create KurentoClient.');
+                    reject(new KurentoClientError('An error occurred while creating kurento client', error));
+                } else {
+                    this.logger.debug('KurentoClient created successfully.');
+                    resolve(kurentoClient);
+                }
+            }));
+    }
+
+    private createMediaPipelineCb(kurentoClient: Kurento.Client.IKurentoClient, callback: (err, result: Kurento.Client.IMediaPipeline) => void): void {
+        this.logger.debug('Creating MediaPipeline...');
+        kurentoClient.create("MediaPipeline", (error, p) => {
+            if (error)
+                this.logger.error('Failed to create MediaPipeline.');
+            else
+                this.logger.debug('MediaPipeline created successfully.');
+
+            callback(error, p);
+        });
+    }
+
+    private createMediaPipeline(kurentoClient: Kurento.Client.IKurentoClient): Promise<Kurento.Client.IMediaPipeline> {
+        this.logger.debug('Creating MediaPipeline...');
+        return new Promise((resolve, reject) => {
+            kurentoClient.create("MediaPipeline", (error, p) => {
+                if (error) {
+                    this.logger.error('Failed to create MediaPipeline.');
+                    reject(new KurentoClientError('An error occurred while creating media pipeline', error));
+                } else {
+                    this.logger.debug('MediaPipeline created successfully.');
+                    resolve(p);
+                }
+            });
+        });
     }
 
     private createPlayerToWebRtcBundles(mediaPipeline: Kurento.Client.IMediaPipeline, rtspUrls: string[]): Promise<PlayerToWebRtcBundle[]> {
-        var playerPromises = this.createPlayerEndpoints(rtspUrls, mediaPipeline);
-        var webRtcPromises = this.createWebRtcEndpoints(mediaPipeline, rtspUrls.length);
+        this.logger.debug('Creating ' + rtspUrls.length + ' PlayerEndpoints and WebRtcEndpoints...');
 
-        return playerPromises.then(playerEndpoints =>
-            webRtcPromises.then(webRtcEndpoints =>
-                this.connectPlayerEndpointsToWebRtcEndpoints(playerEndpoints, webRtcEndpoints, mediaPipeline)));
+        return new Promise((resolve, reject) => {
+            this.createPlayerAndWebRtcEndpointsCb(rtspUrls, mediaPipeline, (err, res) => {
+                if (err) {
+                    this.logger.error('Failed to create '+ rtspUrls.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.', err);
+                    return reject(err);
+                }
+
+                this.logger.debug(rtspUrls.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.');
+                this.connectPlayerEndpointsToWebRtcEndpoints(res.playerEndpoints, res.webRtcEndpoints, mediaPipeline)
+                    .then(resolve, reject);
+            });
+        });
+
+        //var playerPromises = this.createPlayerEndpoints(rtspUrls, mediaPipeline);
+        //var webRtcPromises = this.createWebRtcEndpoints(mediaPipeline, rtspUrls.length);
+
+        //return playerPromises.then(playerEndpoints => {
+        //    this.logger.debug('PlayerEndpoints created.');
+        //    return webRtcPromises.then(webRtcEndpoints => {
+        //        this.logger.debug('WebRtcEndpoints created.');
+        //        return this.connectPlayerEndpointsToWebRtcEndpoints(playerEndpoints, webRtcEndpoints, mediaPipeline);
+        //    });
+        //});
+    }
+
+    private createPlayerAndWebRtcEndpointsCb(
+        rtspUrls: string[],
+        mediaPipeline: Kurento.Client.IMediaPipeline,
+        callback: (err, result?: {
+            playerEndpoints: Kurento.Client.IPlayerEndpoint[],
+            webRtcEndpoints: Kurento.Client.IWebRtcEndpoint[]
+        }) => void): void {
+
+        var result = {
+            playerEndpoints: [],
+            webRtcEndpoints: []
+        }
+        for (var i = 0; i < rtspUrls.length; i++) {
+            mediaPipeline.create("PlayerEndpoint", { uri: rtspUrls[i] }, (err, r) => {
+                if (err)
+                    return callback(err);
+                result.playerEndpoints.push(r);
+                if (result.playerEndpoints.length == result.webRtcEndpoints.length && result.playerEndpoints.length == rtspUrls.length)
+                    callback(null, result);
+            });
+            mediaPipeline.create('WebRtcEndpoint', (err, r) => {
+                if (err)
+                    return callback(err);
+                result.webRtcEndpoints.push(r);
+                if (result.playerEndpoints.length == result.webRtcEndpoints.length && result.playerEndpoints.length == rtspUrls.length)
+                    callback(null, result);
+            });
+        }
     }
 
     private createPlayerEndpoints(rtspUrls: string[], mediaPipeline: Kurento.Client.IMediaPipeline): Promise<Kurento.Client.IPlayerEndpoint[]> {
-        var promises = rtspUrls.map(url => mediaPipeline.create("PlayerEndpoint", { uri: url }));
-        return Promise.all(promises);
+        var promises = rtspUrls.map(url => mediaPipeline.create("PlayerEndpoint", { uri: url }).then(p => { this.logger.debug('PlayerEndpoint created.'); return p; }));
+        return Promise.all(promises).then(results => { this.logger.debug('All PlayerEndpoints created.'); return results; });
     }
 
     private createWebRtcEndpoints(mediaPipeline: Kurento.Client.IMediaPipeline, count: number): Promise<Kurento.Client.IWebRtcEndpoint[]> {
@@ -160,6 +293,7 @@ class RtspStreamingManager {
             else
                 throw new Error('Method connectPlayerEndpointsToWebRtcEndpoints() called with wrong arguments: playerEndpoints.length is greater than webRtcEndpoints.length.');
         }
+
         var promises = playerEndpoints.map((pe, i) => this.connectPlayerEndpointToWebRtcEndpoint(pe, webRtcEndpoints[i], mediaPipeline));
 
         return Promise.all(promises);
@@ -170,11 +304,24 @@ class RtspStreamingManager {
         webRtcEndpoint: Kurento.Client.IWebRtcEndpoint,
         mediaPipeline: Kurento.Client.IMediaPipeline): Promise<PlayerToWebRtcBundle> {
 
+        this.logger.debug('Connecting PlayerEndpoint to WebRtcEndpoint...');
+        this.logger.debug('    1. Creating GStreamerFilter...');
         return mediaPipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: 'VIDEO' })
-            .then(gstFilter =>
-                playerEndpoint.connect(gstFilter)
-                    .then(() => gstFilter.connect(webRtcEndpoint))
-                    .then(() => new PlayerToWebRtcBundle(playerEndpoint, webRtcEndpoint, gstFilter)));
+            .then(gstFilter => {
+                this.logger.debug('       GStreamerFilter created.');
+                this.logger.debug('    2. Connecting PlayerEndpoint to GStreamerFilter...');
+                return playerEndpoint.connect(gstFilter)
+                    .then(() => {
+                        this.logger.debug('       Connected.');
+                        this.logger.debug('    3. Connecting GStreamerFilter to WebRtcEndpoint...');
+                        return gstFilter.connect(webRtcEndpoint);
+                    })
+                    .then(() => {
+                        this.logger.debug('       Connected.');
+                        this.logger.debug('PlayerEndpoint to WebRtcEndpoint connection complete.');
+                        return new PlayerToWebRtcBundle(playerEndpoint, webRtcEndpoint, gstFilter);
+                    })
+            });
     }
 }
 
