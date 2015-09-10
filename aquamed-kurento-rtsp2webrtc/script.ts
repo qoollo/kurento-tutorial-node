@@ -129,8 +129,6 @@ module CitySoft {
             if (this.onStarting)
                 this.onStarting();
 
-            this.startButton.disabled = true;
-
             this.showSpinner();
 
             var kurentoUri = this.getKurentoUri(),
@@ -139,15 +137,18 @@ module CitySoft {
             Promise.all(promises)
                 .then(
                     responses => {
-                        responses.forEach(r => this.rtspPlayers.push(r));
-                        this.stopButton.disabled = false;
+                        responses.forEach(r => {
+                            this.rtspPlayers.push(r);
+                            r.addStateChangedListener((cs, ps, p) => this.onPlayerStateChanged(cs, ps, p));
+                        });
+                        this.onPlayerStateChanged(this.rtspPlayers[0].state);
                         if (this.onStartSuccess)
                             this.onStartSuccess(responses);
                     },
                     error => {
                         console.error(error);
+                        this.onPlayerStateChanged(RtspPlayerState.Disposed);
                         this.showPoster();
-                        this.startButton.disabled = false;
                         if (this.onStartFail)
                             this.onStartFail(error);
                     });
@@ -162,11 +163,31 @@ module CitySoft {
             //this.videosWithUrls.forEach(v => v.getVideoElement().src = '');
             this.rtspPlayers.forEach(p => p.stop());
             this.showPoster();
-            this.startButton.disabled = false;
-            this.stopButton.disabled = true;
 
             if (this.onStopClick)
                 this.onStopClick();
+        }
+
+        onPlayerStateChanged(curState: RtspPlayerState, prevState?: RtspPlayerState, player?: RtspPlayer): void {
+            switch (curState) {
+                case RtspPlayerState.Playing:
+                    this.startButton.disabled = true;
+                    this.pauseButton.disabled = false;
+                    this.stopButton.disabled = false;
+                    break;
+                case RtspPlayerState.Paused:
+                    this.startButton.disabled = false;
+                    this.pauseButton.disabled = true;
+                    this.stopButton.disabled = false;
+                    break;
+                case RtspPlayerState.Stopped:
+                    this.startButton.disabled = false;
+                    this.pauseButton.disabled = true;
+                    this.stopButton.disabled = true;
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
