@@ -19,8 +19,7 @@ module CitySoft {
         constructor(
             private _playerEndpoint: Kurento.Client.IPlayerEndpoint,
             private _webRtcEndpoint: Kurento.Client.IWebRtcEndpoint,
-            ...filters: Kurento.Client.IFilter[])
-        {
+            ...filters: Kurento.Client.IFilter[]) {
             super();
             this._filters = filters;
         }
@@ -87,32 +86,82 @@ module CitySoft {
         }
     }
 
+    export enum RtspPlayerState {
+        /** Playback is in progress */
+        Playing,
+        /** Playback is paused */
+        Paused,
+        /** Playback is stopeed */
+        Stopped,
+        /** RtspPlayer has been disposed and can never play again */
+        Disposed,
+
+        TransitionToPlay,
+        TransitionToPause,
+        TransitionToStop
+    }
+
     export class RtspPlayer extends Disposable {
 
         constructor(private streamingCcontext: StreamingContext) {
             super();
+            this._state = RtspPlayerState.Playing;
         }
 
         play(): void {
-            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.play();
+            if (this._state != RtspPlayerState.Playing)
+                this.setState(RtspPlayerState.TransitionToPlay);
+            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.play()
+                .then(() => this.setState(RtspPlayerState.Playing));
         }
 
         pause(): void {
-            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.pause();
+            if (this._state != RtspPlayerState.Paused)
+                this.setState(RtspPlayerState.TransitionToPause);
+            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.pause()
+                .then(() => this.setState(RtspPlayerState.Paused));
         }
 
         stop(): void {
-            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.stop();
+            if (this._state != RtspPlayerState.Stopped)
+                this.setState(RtspPlayerState.TransitionToStop);
+            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.stop()
+                .then(() => this.setState(RtspPlayerState.Stopped));
         }
 
         get src(): string {
             return this.streamingCcontext.src;
         }
 
+        public get state(): RtspPlayerState {
+            return this._state;
+        }
+        private setState(value: RtspPlayerState): void {
+            if (this._state != value) {
+                var prev = this._state;
+                this._state = value;
+                this.stateChangeListeners.forEach(l => l(value, prev, this));
+            }
+        }
+        private _state: RtspPlayerState;
+
+        public addStateChangedListener(listener: IStateChangeListener): void {
+            this.stateChangeListeners.push(listener);
+        }
+        public removeStateChangedListener(listener: IStateChangeListener): void {
+            this.stateChangeListeners.splice(this.stateChangeListeners.indexOf(listener), 1);
+        }
+        private stateChangeListeners: IStateChangeListener[] = [];
+
         dispose(): void {
             super.dispose();
+            this.setState(RtspPlayerState.Disposed);
             this.streamingCcontext.dispose();
         }
+    }
+
+    export interface IStateChangeListener {
+        (newState: RtspPlayerState, prevState: RtspPlayerState, sender: RtspPlayer): void;
     }
 
     class KurentoClientError {
