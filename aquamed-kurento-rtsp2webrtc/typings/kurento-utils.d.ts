@@ -1,15 +1,16 @@
+/// <reference path="./webrtc-adapter.d.ts" />
 
 declare module Kurento.Utils {
 
     interface IWebRtcPeer {
-        pc;
-        localVideo;
-        remoteVideo;
-        onerror;
+        pc: IRTCPeerConnection;
+        localVideo: HTMLVideoElement;
+        remoteVideo: HTMLVideoElement;
+        onerror: (err) => void;
         stream;
         audioStream;
-        mode;
-        onsdpoffer;
+        mode: string;
+        onsdpoffer: (sdpOffer: string) => void;
 
         start(server, options): void;
         dispose(): void;
