@@ -96,12 +96,26 @@ class RtspStreamingManager {
 
     constructor(logger: ILogger = console) {
         this.logger = logger;
+        window.addEventListener('unload', () => this.dispose());
     }
 
     private logger: ILogger;
 
+    private createdPipelines: Kurento.Client.IMediaPipeline[] = [];
+
+    dispose(): void {
+        this.disposed = true;
+        this.createdPipelines.forEach(p => p.release());
+    }
+    private disposed: boolean = false;
+
+    private checkDisposed(): void {
+        if (this.disposed)
+            throw new Error('RtspStreamingManager is disposed.');
+    }
 
     startStreaming(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<StartStreamingResponse> {
+        this.checkDisposed();
         if (!(streamingSettings instanceof StreamingSettings)
             || !streamingSettings.kurentoWsUri
             || !streamingSettings.streamingRtsp)
@@ -163,9 +177,9 @@ class RtspStreamingManager {
         this.logger.debug('Creating KurentoClient...');
         new kurentoClient(streamingSettings.kurentoWsUri, (error, kurentoClient) => {
             if (error)
-                this.logger.error('Failed to create KurentoClient.');
-            else
-                this.logger.debug('KurentoClient created successfully.');
+                return this.logger.error('Failed to create KurentoClient.');
+
+            this.logger.debug('KurentoClient created successfully.');
 
             callback(error, kurentoClient);
         });
@@ -177,11 +191,11 @@ class RtspStreamingManager {
             new kurentoClient(streamingSettings.kurentoWsUri, (error, kurentoClient) => {
                 if (error) {
                     this.logger.error('Failed to create KurentoClient.');
-                    reject(new KurentoClientError('An error occurred while creating kurento client', error));
-                } else {
-                    this.logger.debug('KurentoClient created successfully.');
-                    resolve(kurentoClient);
+                    return reject(new KurentoClientError('An error occurred while creating kurento client', error));
                 }
+
+                this.logger.debug('KurentoClient created successfully.');
+                resolve(kurentoClient);
             }));
     }
 
@@ -189,10 +203,9 @@ class RtspStreamingManager {
         this.logger.debug('Creating MediaPipeline...');
         kurentoClient.create("MediaPipeline", (error, p) => {
             if (error)
-                this.logger.error('Failed to create MediaPipeline.');
-            else
-                this.logger.debug('MediaPipeline created successfully.');
+                return this.logger.error('Failed to create MediaPipeline.');
 
+            this.logger.debug('MediaPipeline created successfully.');
             callback(error, p);
         });
     }
@@ -203,11 +216,12 @@ class RtspStreamingManager {
             kurentoClient.create("MediaPipeline", (error, p) => {
                 if (error) {
                     this.logger.error('Failed to create MediaPipeline.');
-                    reject(new KurentoClientError('An error occurred while creating media pipeline', error));
-                } else {
-                    this.logger.debug('MediaPipeline created successfully.');
-                    resolve(p);
+                    return reject(new KurentoClientError('An error occurred while creating media pipeline', error));
                 }
+
+                this.logger.debug('MediaPipeline created successfully.');
+                this.createdPipelines.push(p);
+                resolve(p);
             });
         });
     }
@@ -218,7 +232,7 @@ class RtspStreamingManager {
         return new Promise((resolve, reject) => {
             this.createPlayerAndWebRtcEndpointsCb(rtspUrls, mediaPipeline, (err, res) => {
                 if (err) {
-                    this.logger.error('Failed to create '+ rtspUrls.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.', err);
+                    this.logger.error('Failed to create ' + rtspUrls.length + ' PlayerEndpoint(s) and WebRtcEndpoint(s) created.', err);
                     return reject(err);
                 }
 
