@@ -275,12 +275,12 @@ declare module Kurento.Client {
         /**
          * Pauses the feed.
          */
-        pause(callback: ICallback<void>): Promise<void>;
+        pause(callback?: ICallback<void>): Promise<void>;
 
         /**
          * Stops the feed.
          */
-        stop(callback: ICallback<void>): Promise<void>;
+        stop(callback?: ICallback<void>): Promise<void>;
     }
 
     /**

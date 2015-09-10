@@ -105,13 +105,13 @@ module CitySoft {
         }
 
         protected videosWithUrls: VideoWithUrlInput[] = [];
-        private startResponses: StartStreamingResponse[] = [];
+        private rtspPlayers: RtspPlayer[] = [];
         protected startButton: HTMLButtonElement;
         protected pauseButton: HTMLButtonElement;
         protected stopButton: HTMLButtonElement;
 
         protected onStarting: () => void;
-        protected onStartSuccess: (responses: StartStreamingResponse[]) => void;
+        protected onStartSuccess: (responses: RtspPlayer[]) => void;
         protected onStartFail: (err) => void;
         protected onStopClick: () => void;
 
@@ -139,7 +139,7 @@ module CitySoft {
             Promise.all(promises)
                 .then(
                     responses => {
-                        responses.forEach(r => this.startResponses.push(r));
+                        responses.forEach(r => this.rtspPlayers.push(r));
                         this.stopButton.disabled = false;
                         if (this.onStartSuccess)
                             this.onStartSuccess(responses);
@@ -154,12 +154,13 @@ module CitySoft {
         }
 
         stopPlayback(): void {
-            if (this.startResponses.length < this.videosWithUrls.length)
+            if (this.rtspPlayers.length < this.videosWithUrls.length)
                 return;
 
-            this.startResponses.forEach(r => r.stop());
-            this.startResponses.length = 0;
-            this.videosWithUrls.forEach(v => v.getVideoElement().src = '');
+            this.rtspPlayers.forEach(r => r.stop());
+            this.rtspPlayers.length = 0;
+            //this.videosWithUrls.forEach(v => v.getVideoElement().src = '');
+            this.rtspPlayers.forEach(p => p.stop());
             this.showPoster();
             this.startButton.disabled = false;
             this.stopButton.disabled = true;
@@ -188,7 +189,7 @@ module CitySoft {
             this.infoElement.value = 'Запуск. Ждите...';
         }
 
-        private handleStartSuccess(responses: StartStreamingResponse[]): void {
+        private handleStartSuccess(responses: RtspPlayer[]): void {
             this.infoElement.value = 'Готово!';
         }
 

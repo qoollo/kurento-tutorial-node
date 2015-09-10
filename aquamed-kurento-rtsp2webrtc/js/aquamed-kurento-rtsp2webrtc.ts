@@ -2,6 +2,7 @@
 /// <reference path="../typings/kurento-client.d.ts" />
 /// <reference path="../typings/kurento-utils.d.ts" />
 /// <reference path="./Url.ts" />
+/// <reference path="./Disposable.ts" />
 
 module CitySoft {
 
@@ -13,13 +14,14 @@ module CitySoft {
         }
     }
 
-    class PlayerToWebRtcBundle {
+    class PlayerToWebRtcBundle extends Disposable {
 
         constructor(
             private _playerEndpoint: Kurento.Client.IPlayerEndpoint,
             private _webRtcEndpoint: Kurento.Client.IWebRtcEndpoint,
-            ...filters: Kurento.Client.IFilter[]) {
-
+            ...filters: Kurento.Client.IFilter[])
+        {
+            super();
             this._filters = filters;
         }
 
@@ -33,17 +35,44 @@ module CitySoft {
             return this._filters;
         }
         private _filters: Kurento.Client.IFilter[];
+
+        dispose(): void {
+            super.dispose();
+            this.filters.forEach(f => f.release());
+            if (this.playerEndpoint)
+                this.playerEndpoint.release();
+            if (this.webRtcEndpoint)
+                this.webRtcEndpoint.release();
+        }
     }
 
-    export class StartStreamingResponse {
+    class StreamingContext extends Disposable {
 
         constructor(
             public webRtcPeer: Kurento.Utils.IWebRtcPeer = null,
             public pipeline: Kurento.Client.IMediaPipeline = null,
             public src: string = null) {
+            super();
         }
 
-        stop(): void {
+        public mediaObjectsBundle: PlayerToWebRtcBundle = null;
+
+        public stop(): void {
+            if (this.mediaObjectsBundle) {
+                this.mediaObjectsBundle.playerEndpoint.stop();
+            }
+        }
+
+        public dispose(): void {
+            super.dispose();
+            this.mediaObjectsBundle.dispose();
+        }
+
+        public createRtspPlayer(): RtspPlayer {
+            return new RtspPlayer(this);
+        }
+
+        private _stop(): void {
             if (this.webRtcPeer) {
                 this.webRtcPeer.dispose();
                 this.webRtcPeer = null;
@@ -55,6 +84,34 @@ module CitySoft {
             if (this.src) {
                 this.src = null;
             }
+        }
+    }
+
+    export class RtspPlayer extends Disposable {
+
+        constructor(private streamingCcontext: StreamingContext) {
+            super();
+        }
+
+        play(): void {
+            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.play();
+        }
+
+        pause(): void {
+            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.pause();
+        }
+
+        stop(): void {
+            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.stop();
+        }
+
+        get src(): string {
+            return this.streamingCcontext.src;
+        }
+
+        dispose(): void {
+            super.dispose();
+            this.streamingCcontext.dispose();
         }
     }
 
@@ -122,7 +179,7 @@ module CitySoft {
                 throw new Error('RtspStreamingManager is disposed.');
         }
 
-        startStreaming(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<StartStreamingResponse> {
+        startStreaming(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<RtspPlayer> {
             this.checkDisposed();
             if (!(streamingSettings instanceof StreamingSettings)
                 || !streamingSettings.kurentoWsUri
@@ -131,11 +188,11 @@ module CitySoft {
 
             return new Promise((resolve, reject) => {
 
-                var responseData = new StartStreamingResponse();
+                var responseData = new StreamingContext();
 
                 this.createWebRtcPeerAndGetSdpOffer(videoElement, responseData)
                     .then(sdpOffer => this.processSdpOfferAndPlay(sdpOffer, streamingSettings, responseData))
-                    .then(() => { responseData.src = videoElement.src; resolve(); },
+                    .then(() => { responseData.src = videoElement.src; resolve(responseData.createRtspPlayer()); },
                         error => {
                             responseData.stop();
                             reject(error);
@@ -144,7 +201,7 @@ module CitySoft {
             })
         }
 
-        private createWebRtcPeerAndGetSdpOffer(videoElement: HTMLVideoElement, responseData: StartStreamingResponse): Promise<string> {
+        private createWebRtcPeerAndGetSdpOffer(videoElement: HTMLVideoElement, responseData: StreamingContext): Promise<string> {
             if (this.webRtcPeer) {
                 this.logger.debug('WebRtcPeer already created before. Reusing the same one.');
                 responseData.webRtcPeer = this.webRtcPeer.webRtcPeer;
@@ -168,7 +225,7 @@ module CitySoft {
             });
         }
 
-        private processSdpOfferAndPlay(sdpOffer: string, streamingSettings: StreamingSettings, responseData: StartStreamingResponse): Promise<void> {
+        private processSdpOfferAndPlay(sdpOffer: string, streamingSettings: StreamingSettings, responseData: StreamingContext): Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 this.createKurentoClientCb(streamingSettings, (err, kurentoClient) => {
                     if (err)
@@ -178,12 +235,14 @@ module CitySoft {
                     this.createMediaPipelineCb(kurentoClient, (err, mediaPipeline) => {
                         responseData.pipeline = mediaPipeline;
                         this.createPlayerToWebRtcBundle(mediaPipeline, streamingSettings.rtspUrl)
-                            .then(bundles => {
-                                Promise.all(bundles.map(b => b.playerEndpoint.play()));
-                                bundles.forEach(b => b.webRtcEndpoint.processOffer(sdpOffer).then(sdpAnswer =>
-                                    responseData.webRtcPeer.processSdpAnswer(sdpAnswer)));
+                            .then(bundle => {
+                                responseData.mediaObjectsBundle = bundle;
+                                return Promise.all([
+                                    bundle.playerEndpoint.play(),
+                                    bundle.webRtcEndpoint.processOffer(sdpOffer).then(sdpAnswer =>
+                                        responseData.webRtcPeer.processSdpAnswer(sdpAnswer))]);
                             })
-                            .then(resolve, reject);
+                            .then(<any>resolve, reject);
                     });
                 });
             });
@@ -250,7 +309,7 @@ module CitySoft {
             });
         }
 
-        private createPlayerToWebRtcBundle(mediaPipeline: Kurento.Client.IMediaPipeline, rtspUrl: string): Promise<PlayerToWebRtcBundle[]> {
+        private createPlayerToWebRtcBundle(mediaPipeline: Kurento.Client.IMediaPipeline, rtspUrl: string): Promise<PlayerToWebRtcBundle> {
             this.logger.debug('Creating PlayerEndpoint and WebRtcEndpoint...');
 
             return new Promise((resolve, reject) => {
