@@ -91,6 +91,13 @@ module CitySoft {
         */
     }
 
+    class WebRtcPeerWrapper {
+        constructor(public webRtcPeer: Kurento.Utils.IWebRtcPeer) {
+        }
+
+        sdpOffer: string = null;
+    }
+
     export class RtspStreamingManager {
 
         constructor(logger: ILogger = console) {
@@ -100,7 +107,7 @@ module CitySoft {
 
         private logger: ILogger;
 
-        private webRtcPeers: Kurento.Utils.IWebRtcPeer = null;
+        private webRtcPeer: WebRtcPeerWrapper = null;
         private kurentoClient: Kurento.Client.IKurentoClient = null;
         private createdPipelines: Kurento.Client.IMediaPipeline[] = [];
 
@@ -137,12 +144,37 @@ module CitySoft {
             })
         }
 
+        private createWebRtcPeerAndGetSdpOffer(videoElement: HTMLVideoElement, responseData: StartStreamingResponse): Promise<string> {
+            if (this.webRtcPeer) {
+                this.logger.debug('WebRtcPeer already created before. Reusing the same one.');
+                responseData.webRtcPeer = this.webRtcPeer.webRtcPeer;
+                return Promise.resolve(this.webRtcPeer.sdpOffer);
+            }
+            this.logger.debug('Creating WebRtcPeer and getting SDP Offer...');
+            return new Promise((resolve, reject) => {
+                responseData.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(
+                    videoElement,
+                    sdpOffer => {
+                        this.logger.debug('Received SDP Offer.');
+                        this.webRtcPeer.sdpOffer = sdpOffer;
+                        resolve(sdpOffer);
+                    },
+                    err => {
+                        this.logger.error('Error in WebRtcPeer.', err);
+                        reject(err);
+                    });
+                this.webRtcPeer = new WebRtcPeerWrapper(responseData.webRtcPeer);
+                this.logger.debug('WebRtcPeer created successfully...I guess.');
+            });
+        }
+
         private processSdpOfferAndPlay(sdpOffer: string, streamingSettings: StreamingSettings, responseData: StartStreamingResponse): Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 this.createKurentoClientCb(streamingSettings, (err, kurentoClient) => {
                     if (err)
                         reject(err);
 
+                    this.kurentoClient = kurentoClient;
                     this.createMediaPipelineCb(kurentoClient, (err, mediaPipeline) => {
                         responseData.pipeline = mediaPipeline;
                         this.createPlayerToWebRtcBundle(mediaPipeline, streamingSettings.rtspUrl)
@@ -157,24 +189,11 @@ module CitySoft {
             });
         }
 
-        private createWebRtcPeerAndGetSdpOffer(videoElement: HTMLVideoElement, responseData: StartStreamingResponse): Promise<string> {
-            this.logger.debug('Creating WebRtcPeer and getting SDP Offer...');
-            return new Promise((resolve, reject) => {
-                this.webRtcPeers = responseData.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(
-                    videoElement,
-                    sdpOffer => {
-                        this.logger.debug('Received SDP Offer.');
-                        resolve(sdpOffer);
-                    },
-                    err => {
-                        this.logger.error('Error in WebRtcPeer.', err);
-                        reject(err);
-                    });
-                this.logger.debug('WebRtcPeer created successfully...I guess.');
-            });
-        }
-
         private createKurentoClientCb(streamingSettings: StreamingSettings, callback: (error: any, result: Kurento.Client.IKurentoClient) => void): void {
+            if (this.kurentoClient) {
+                this.logger.debug('KurentoClient already created. Reusing existing one.');
+                return callback(null, this.kurentoClient);
+            }
             this.logger.debug('Creating KurentoClient...');
             new kurentoClient(streamingSettings.kurentoWsUri, (error, kurentoClient) => {
                 if (error)
@@ -182,7 +201,7 @@ module CitySoft {
 
                 this.logger.debug('KurentoClient created successfully.');
 
-                callback(error, kurentoClient);
+                callback(null, kurentoClient);
             });
         }
 
@@ -201,13 +220,17 @@ module CitySoft {
         }
 
         private createMediaPipelineCb(kurentoClient: Kurento.Client.IKurentoClient, callback: (err, result: Kurento.Client.IMediaPipeline) => void): void {
+            if (this.createdPipelines.length > 0) {
+                this.logger.debug('MediaPipeline was already created. Reusing existing one.');
+                return callback(null, this.createdPipelines[0]);
+            }
             this.logger.debug('Creating MediaPipeline...');
             kurentoClient.create("MediaPipeline", (error, p) => {
                 if (error)
                     return this.logger.error('Failed to create MediaPipeline.');
 
                 this.logger.debug('MediaPipeline created successfully.');
-                callback(error, p);
+                callback(null, p);
             });
         }
 
