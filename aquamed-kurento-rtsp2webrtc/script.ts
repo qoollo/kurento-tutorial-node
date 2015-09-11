@@ -10,9 +10,10 @@ module CitySoft {
 
     window.addEventListener('load', function () {
 
-        sample1 = new Sample1();
+        var streamingManager = new RtspStreamingManager();
+        sample1 = new Sample1(streamingManager);
 
-        sample2 = new Sample2();
+        sample2 = new Sample2(streamingManager);
 
         initVideos();
 
@@ -63,14 +64,13 @@ module CitySoft {
             return 'video-with-url';
         }
 
-        constructor(container: HTMLDivElement) {
+        constructor(container: HTMLDivElement, private streamingManager: RtspStreamingManager) {
             this._videoElement = container.getElementsByTagName('video')[0];
             this._urlInput = container.getElementsByTagName('input')[0];
         }
 
         private _videoElement: HTMLVideoElement;
         private _urlInput: HTMLInputElement;
-        private streamingManager = new RtspStreamingManager();
 
         getVideoElement() {
             return this._videoElement;
@@ -89,7 +89,7 @@ module CitySoft {
      */
     class Sample {
 
-        constructor(sampleContainer: HTMLElement) {
+        constructor(sampleContainer: HTMLElement, private streamingManager: RtspStreamingManager) {
 
             this.startButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-start')[0];
             this.startButton.addEventListener('click', () => this.startPlayback());
@@ -102,7 +102,7 @@ module CitySoft {
 
             var videoWithUrlContainers = sampleContainer.getElementsByClassName(VideoWithUrlInput.containerSelector);
             for (var i = 0; i < videoWithUrlContainers.length; i++)
-                this.videosWithUrls.push(new VideoWithUrlInput(<HTMLDivElement>videoWithUrlContainers[i]));
+                this.videosWithUrls.push(new VideoWithUrlInput(<HTMLDivElement>videoWithUrlContainers[i], this.streamingManager));
         }
 
         protected videosWithUrls: VideoWithUrlInput[] = [];
@@ -202,8 +202,8 @@ module CitySoft {
 
     class Sample1 extends Sample {
 
-        constructor() {
-            super(document.getElementById('sample-1'));
+        constructor(streamingManager: RtspStreamingManager) {
+            super(document.getElementById('sample-1'), streamingManager);
 
             this.infoElement = document.getElementById('info');
 
@@ -234,8 +234,8 @@ module CitySoft {
 
     class Sample2 extends Sample {
 
-        constructor() {
-            super(document.getElementById('sample-2'));
+        constructor(streamingManager: RtspStreamingManager) {
+            super(document.getElementById('sample-2'), streamingManager);
         }
     }
 }
