@@ -1,4 +1,4 @@
-﻿/// <reference path="./js/aquamed-kurento-rtsp2webrtc.ts" />
+﻿/// <reference path="./src/KurentoRtspStreamingManager.ts" />
 /// <reference path="./typings/kurento-client.d.ts" />
 /// <reference path="./typings/kurento-utils.d.ts" />
 
