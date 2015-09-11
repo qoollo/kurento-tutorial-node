@@ -95,6 +95,7 @@ module CitySoft {
             this.startButton.addEventListener('click', () => this.startPlayback());
 
             this.pauseButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-pause')[0];
+            this.pauseButton.addEventListener('click', () => this.pausePlayback());
 
             this.stopButton = <HTMLButtonElement>sampleContainer.getElementsByClassName('btn-stop')[0];
             this.stopButton.addEventListener('click', () => this.stopPlayback());
@@ -131,37 +132,45 @@ module CitySoft {
 
             this.showSpinner();
 
-            var kurentoUri = this.getKurentoUri(),
-                promises = this.videosWithUrls.map(v => v.startStreaming(kurentoUri));
+            if (this.rtspPlayers.length == 0) {
+                var kurentoUri = this.getKurentoUri(),
+                    promises = this.videosWithUrls.map(v => v.startStreaming(kurentoUri));
 
-            Promise.all(promises)
-                .then(
-                    responses => {
-                        responses.forEach(r => {
-                            this.rtspPlayers.push(r);
-                            r.addStateChangedListener((cs, ps, p) => this.onPlayerStateChanged(cs, ps, p));
+                Promise.all(promises)
+                    .then(
+                        responses => {
+                            responses.forEach(r => {
+                                this.rtspPlayers.push(r);
+                                r.addStateChangedListener((cs, ps, p) => this.onPlayerStateChanged(cs, ps, p));
+                            });
+                            this.onPlayerStateChanged(this.rtspPlayers[0].state);
+                            if (this.onStartSuccess)
+                                this.onStartSuccess(responses);
+                        },
+                        error => {
+                            console.error(error);
+                            this.onPlayerStateChanged(RtspPlayerState.Disposed);
+                            this.showPoster();
+                            if (this.onStartFail)
+                                this.onStartFail(error);
                         });
-                        this.onPlayerStateChanged(this.rtspPlayers[0].state);
-                        if (this.onStartSuccess)
-                            this.onStartSuccess(responses);
-                    },
-                    error => {
-                        console.error(error);
-                        this.onPlayerStateChanged(RtspPlayerState.Disposed);
-                        this.showPoster();
-                        if (this.onStartFail)
-                            this.onStartFail(error);
-                    });
+            } else {
+                this.rtspPlayers.map(p => p.play());
+            }
+        }
+
+        pausePlayback(): void {
+            this.rtspPlayers.forEach(p => p.pause());
+
         }
 
         stopPlayback(): void {
             if (this.rtspPlayers.length < this.videosWithUrls.length)
                 return;
 
-            this.rtspPlayers.forEach(r => r.stop());
-            this.rtspPlayers.length = 0;
-            //this.videosWithUrls.forEach(v => v.getVideoElement().src = '');
             this.rtspPlayers.forEach(p => p.stop());
+            //this.rtspPlayers.length = 0;
+            //this.videosWithUrls.forEach(v => v.getVideoElement().src = '');
             this.showPoster();
 
             if (this.onStopClick)

@@ -108,24 +108,24 @@ module CitySoft {
             this._state = RtspPlayerState.Playing;
         }
 
-        play(): void {
+        play(): Promise<void> {
             if (this._state != RtspPlayerState.Playing)
                 this.setState(RtspPlayerState.TransitionToPlay);
-            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.play()
+            return this.streamingCcontext.mediaObjectsBundle.playerEndpoint.play()
                 .then(() => this.setState(RtspPlayerState.Playing));
         }
 
-        pause(): void {
+        pause(): Promise<void>{
             if (this._state != RtspPlayerState.Paused)
                 this.setState(RtspPlayerState.TransitionToPause);
-            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.pause()
+            return this.streamingCcontext.mediaObjectsBundle.playerEndpoint.pause()
                 .then(() => this.setState(RtspPlayerState.Paused));
         }
 
-        stop(): void {
+        stop(): Promise<void> {
             if (this._state != RtspPlayerState.Stopped)
                 this.setState(RtspPlayerState.TransitionToStop);
-            this.streamingCcontext.mediaObjectsBundle.playerEndpoint.stop()
+            return this.streamingCcontext.mediaObjectsBundle.playerEndpoint.stop()
                 .then(() => this.setState(RtspPlayerState.Stopped));
         }
 
