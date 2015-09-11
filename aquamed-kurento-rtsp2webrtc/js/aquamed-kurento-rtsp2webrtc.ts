@@ -2,17 +2,12 @@
 /// <reference path="../typings/kurento-client.d.ts" />
 /// <reference path="../typings/kurento-utils.d.ts" />
 /// <reference path="./Url.ts" />
+/// <reference path="./ILogger.ts" />
 /// <reference path="./Disposable.ts" />
+/// <reference path="./StreamingSettings.ts" />
+/// <reference path="./RtspPlayerState.ts" />
 
 module CitySoft {
-
-    export class StreamingSettings {
-        constructor(
-            public kurentoWsUri: string,
-            public rtspUrl: string,
-            public iceServers: string = null) {
-        }
-    }
 
     class PlayerToWebRtcBundle extends Disposable {
 
@@ -86,21 +81,6 @@ module CitySoft {
         }
     }
 
-    export enum RtspPlayerState {
-        /** Playback is in progress */
-        Playing,
-        /** Playback is paused */
-        Paused,
-        /** Playback is stopeed */
-        Stopped,
-        /** RtspPlayer has been disposed and can never play again */
-        Disposed,
-
-        TransitionToPlay,
-        TransitionToPause,
-        TransitionToStop
-    }
-
     export class RtspPlayer extends Disposable {
 
         constructor(private streamingCcontext: StreamingContext) {
@@ -170,31 +150,6 @@ module CitySoft {
             this.message = message;
             this.data = data;
         }
-    }
-
-    interface ILogger {
-        log(message?: any, ...optionalParams: any[]): void;
-        debug(message?: string, ...optionalParams: any[]): void;
-        warn(message?: any, ...optionalParams: any[]): void;
-        info(message?: any, ...optionalParams: any[]): void;
-        error(message?: any, ...optionalParams: any[]): void;
-        time(timerName?: string): void;
-        timeEnd(timerName?: string): void;
-
-        /*
-        clear(): void;
-        count(countTitle?: string): void;
-        dir(value?: any, ...optionalParams: any[]): void;
-        dirxml(value: any): void;
-        group(groupTitle?: string): void;
-        groupCollapsed(groupTitle?: string): void;
-        groupEnd(): void;
-        msIsIndependentlyComposed(element: Element): boolean;
-        profile(reportName?: string): void;
-        profileEnd(): void;
-        select(element: Element): void;
-        trace(): void;
-        */
     }
 
     class WebRtcPeerWrapper {
