@@ -163,6 +163,126 @@ module CitySoft {
         sdpOffer: string = null;
     }
 
+    class KurentoPipeline {
+
+        constructor(private logger: ILogger) {
+        }
+
+        private kurentoClients: KurentoClientWrapper[] = [];
+
+        public createRtspPlayer(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<RtspPlayer> {
+            return this.getKurentoClient(streamingSettings.kurentoWsUri)
+                .then(client => client.createRtspPlayer(streamingSettings, videoElement));
+        }
+
+        private getKurentoClient(kurentoWsUrl: string): Promise<KurentoClientWrapper> {
+            var match = this.kurentoClients.filter(c => c.kurentoWsUrl == kurentoWsUrl)[0];
+            if (!match) {
+                var videoElement = {};
+                return new Promise((resolve, reject) => {
+                    var webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>videoElement, (sdpOffer) => {
+                        new kurentoClient(kurentoWsUrl, (error, kurentoClient) => {
+                            if (error)
+                                return reject(error);
+                            var client = new KurentoClientWrapper(this.logger, kurentoClient, kurentoWsUrl, webRtcPeer, sdpOffer, <any>videoElement);
+                            this.kurentoClients.push(client);
+                            resolve(client);
+                        });
+                    });
+                });
+            }
+            else
+                return Promise.resolve(match);
+        }
+    }
+
+    class KurentoClientWrapper {
+        constructor(
+            private logger: ILogger,
+            private _kurentoClient: Kurento.Client.IKurentoClient,
+            private _kurentoWsUrl: string,
+            private webRtcPeer: Kurento.Utils.IWebRtcPeer,
+            private sdpOffer: string,
+            private videoElement: HTMLVideoElement) {
+        }
+
+        private sdpOfferProcessed: boolean = false;
+
+        public get kurentoClient(): Kurento.Client.IKurentoClient {
+            return this._kurentoClient;
+        }
+
+        public get kurentoWsUrl(): string {
+            return this._kurentoWsUrl;
+        }
+
+        private getPipeline(): Promise<Kurento.Client.IMediaPipeline> {
+            if (this._pipeline == null) {
+                this._pipeline = new Promise((resolve, reject) => {
+                    this.kurentoClient.create("MediaPipeline", (error, p) => {
+                        if (error)
+                            return reject(error);
+                        resolve(p);
+                    });
+                });
+            }
+            return this._pipeline;
+        }
+        private _pipeline: Promise<Kurento.Client.IMediaPipeline> = null;
+
+        public createRtspPlayer(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<RtspPlayer> {
+            return this.getPipeline()
+                .then(pipeline => this.createRtspPlayerInPipeline(streamingSettings, videoElement, pipeline));
+        }
+
+        private createRtspPlayerInPipeline(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement, pipeline: Kurento.Client.IMediaPipeline): Promise<RtspPlayer> {
+            return new Promise((resolve, reject) => {
+                pipeline.create("PlayerEndpoint", { uri: streamingSettings.rtspUrl }, (error, player) => {
+                    if (error) return reject(error);
+
+                    pipeline.create("WebRtcEndpoint", (error, webRtc) => {
+                        if (error) return reject(error);
+
+                        if (!this.sdpOfferProcessed) {
+                            this.sdpOfferProcessed = true;
+                            webRtc.processOffer(this.sdpOffer, (error, sdpAnswer) => {
+                                if (error) return reject(error);
+
+                                this.webRtcPeer.processSdpAnswer(sdpAnswer);
+                            });
+                        }
+
+                        pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=25/1', filterType: "VIDEO" }, (error, gstFilter) => {
+                            if (error) return reject(error);
+
+                            player.connect(gstFilter, error => {
+                                if (error) return reject(error);
+
+                                gstFilter.connect(webRtc, error => {
+                                    if (error) return reject(error);
+
+                                    this.logger.log("PlayerEndpoint-->WebRtcEndpoint connection established.");
+
+                                    player.play(error => {
+                                        if (error) return reject(error);
+
+                                        this.logger.log("Player playing...");
+                                        var context = new StreamingContext(this.webRtcPeer, pipeline, videoElement.src);
+                                        context.mediaObjectsBundle = new PlayerToWebRtcBundle(player, webRtc, gstFilter);
+                                        var rtspPlayer = context.createRtspPlayer();
+                                        resolve(rtspPlayer);
+                                    });
+                                });
+                            });
+                        });
+
+                    });
+                });
+            });
+        }
+
+    }
+
     export class RtspStreamingManager {
 
         constructor(logger: ILogger = console) {
@@ -188,6 +308,15 @@ module CitySoft {
             if (this.disposed)
                 throw new Error('RtspStreamingManager is disposed.');
         }
+
+        startStreamingWithReusing(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<RtspPlayer> {
+            return this.kurentoPipeline.createRtspPlayer(streamingSettings, videoElement)
+                .then(player => {
+                    this.createdPlayers.push(player);
+                    return player;
+                });
+        }
+        private kurentoPipeline: KurentoPipeline = new KurentoPipeline(this.logger);
 
         startStreaming(streamingSettings: StreamingSettings, videoElement: HTMLVideoElement): Promise<RtspPlayer> {
             var resolve,
@@ -216,21 +345,6 @@ module CitySoft {
                                         webRtcPeer.processSdpAnswer(sdpAnswer);
                                     });
 
-                                    /*
-                                    player.connect(webRtc, error => {
-                                        if (error) return reject(error);
-
-                                        this.logger.log("PlayerEndpoint-->WebRtcEndpoint connection established.");
-
-                                        player.play(error => {
-                                            if (error) return reject(error);
-
-                                            this.logger.log("Player playing...");
-                                            var context = new StreamingContext(webRtcPeer, pipeline, videoElement.src);
-                                            resolve(context.createRtspPlayer());
-                                        });
-                                    });
-                                    */
                                     pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=25/1', filterType: "VIDEO" }, (error, gstFilter) => {
                                         if (error) return reject(error);
 
