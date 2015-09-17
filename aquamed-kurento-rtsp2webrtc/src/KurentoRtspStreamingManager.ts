@@ -60,6 +60,10 @@ module CitySoft {
         public dispose(): void {
             super.dispose();
             this.mediaObjectsBundle.dispose();
+            if (this.pipeline)
+                this.pipeline.release();
+            if (this.webRtcPeer)
+                this.webRtcPeer.dispose();
         }
 
         public createRtspPlayer(): RtspPlayer {
@@ -171,10 +175,12 @@ module CitySoft {
         private webRtcPeer: WebRtcPeerWrapper = null;
         private kurentoClient: Kurento.Client.IKurentoClient = null;
         private createdPipelines: Kurento.Client.IMediaPipeline[] = [];
+        private createdPlayers: RtspPlayer[] = [];
 
         dispose(): void {
             this.disposed = true;
             this.createdPipelines.forEach(p => p.release());
+            this.createdPlayers.forEach(p => p.dispose());
         }
         private disposed: boolean = false;
 
@@ -210,7 +216,22 @@ module CitySoft {
                                         webRtcPeer.processSdpAnswer(sdpAnswer);
                                     });
 
-                                    pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=15/1', filterType: "VIDEO" }, (error, gstFilter) => {
+                                    /*
+                                    player.connect(webRtc, error => {
+                                        if (error) return reject(error);
+
+                                        this.logger.log("PlayerEndpoint-->WebRtcEndpoint connection established.");
+
+                                        player.play(error => {
+                                            if (error) return reject(error);
+
+                                            this.logger.log("Player playing...");
+                                            var context = new StreamingContext(webRtcPeer, pipeline, videoElement.src);
+                                            resolve(context.createRtspPlayer());
+                                        });
+                                    });
+                                    */
+                                    pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=25/1', filterType: "VIDEO" }, (error, gstFilter) => {
                                         if (error) return reject(error);
 
                                         player.connect(gstFilter, error => {
@@ -226,11 +247,15 @@ module CitySoft {
 
                                                     this.logger.log("Player playing...");
                                                     var context = new StreamingContext(webRtcPeer, pipeline, videoElement.src);
-                                                    resolve(context.createRtspPlayer());
+                                                    context.mediaObjectsBundle = new PlayerToWebRtcBundle(player, webRtc, gstFilter);
+                                                    var rtspPlayer = context.createRtspPlayer();
+                                                    this.createdPlayers.push(rtspPlayer);
+                                                    resolve(rtspPlayer);
                                                 });
                                             });
                                         });
                                     });
+
                                 });
                             });
                         });
