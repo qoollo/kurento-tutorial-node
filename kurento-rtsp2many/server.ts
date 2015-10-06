@@ -102,20 +102,19 @@ wssForControl.on('connection', function (ws) {
             response;
         console.log('Control-connection #' + sessionId + ' received message:', message);
 
-        switch (message.action) {
+        switch (message.rpc) {
             case 'AddMaster':
                 console.log('"AddMaster" command called with params', message.params);
-                break;
                 if (!!message.streamUrl) {
                     var id = masterManager.addMaster(new Master(null, message.params.streamUrl, null, kurentoClientManager));
-                    response = new ActionResponse(statuses.success, 'Master has been successfully added', id);
+                    response = new RpcSuccessResponse('Master has been successfully added', id);
                 }
                 else
-                    response = new ActionResponse(statuses.error, 'Message doesn`t contain camera URL', message);
+                    response = new RpcErrorResponse('Message doesn`t contain camera URL', message.params.streamUrl);
                 break;
 
             default:
-                response = new ActionResponse(statuses.error, 'Invalid message', message)
+                response = new RpcErrorResponse('Unknown RPC: ', message.rpc)
                 break;
         }
 
@@ -392,17 +391,31 @@ function stop(id: string, ws: string): void {
 
 
 
+class RpcResponse {
 
-
-function ActionResponse(status, message, data) {
-    this.status = status;
-    this.message = message;
-    this.data = data;
+    constructor(public status: string, public message, public data?) {
+        this.status = status;
+        this.message = message;
+        this.data = data;
+    }
 }
 
-var statuses = {
-    success: 'Success',
-    error: 'Error'
+class RpcSuccessResponse extends RpcResponse {
+    constructor(message, data) {
+        super(RpcResponseStatus[RpcResponseStatus.Success], message, data);
+    }
+}
+
+class RpcErrorResponse extends RpcResponse {
+    constructor(message, data) {
+        super(RpcResponseStatus[RpcResponseStatus.Error], message, data);
+    }
+}
+
+
+enum RpcResponseStatus {
+    Success,
+    Error
 }
 
 app.use(express.static(path.join(__dirname, 'static')));

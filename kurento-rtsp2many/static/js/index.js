@@ -75,7 +75,7 @@ function handleViewerResponse(message) {
 
 function onMasterClick() {
     var message = {
-        action: 'AddMaster',
+        rpc: 'AddMaster',
         params: {
             streamUrl: streamUrl
         }
