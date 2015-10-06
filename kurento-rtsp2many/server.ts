@@ -106,8 +106,13 @@ wssForControl.on('connection', function (ws) {
             case 'AddMaster':
                 console.log('"AddMaster" command called with params', message.params);
                 if (!!message.params.streamUrl) {
-                    var id = masterManager.addMaster(new Master(null, message.params.streamUrl, null, kurentoClientManager));
-                    response = new RpcSuccessResponse('Master has been successfully added', id);
+                    var master = masterManager.addMaster(new Master(null, message.params.streamUrl, null, kurentoClientManager));
+                    master.startStream((err, sdpAnswer) => {
+                        if (err)
+                            return console.error("Failed to start stream for Master #", master.id);
+                        console.log("Started stream on Master #", master.id);
+                    });
+                    response = new RpcSuccessResponse('Master has been successfully added', master.id);
                 }
                 else
                     response = new RpcErrorResponse('Message doesn`t contain camera URL', message.params.streamUrl);
