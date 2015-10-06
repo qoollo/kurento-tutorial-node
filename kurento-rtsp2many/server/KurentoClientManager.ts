@@ -13,7 +13,7 @@ class KurentoClientManager {
         if (existingClient)
             onSuccess(existingClient, 'The client with the specified Uri already exists');
         else
-            KurentoClient(clientUri, (error, kurentoClient: Kurento.IKurentoClient) => {
+            new kurentoClient(clientUri, (error, kurentoClient: Kurento.Client.IKurentoClient) => {
                 if (error)
                     return onError(error)
 
@@ -41,7 +41,7 @@ class KurentoClientManager {
 
 class KurentoClientWrapper {
 
-    constructor(id: number, uri: string, client: Kurento.IKurentoClient) {
+    constructor(id: number, uri: string, client: Kurento.Client.IKurentoClient) {
         this._id = id;
         this._uri = uri;
         this._client = client;
@@ -57,10 +57,10 @@ class KurentoClientWrapper {
     }
     private _uri: string;
 
-    get client(): Kurento.IKurentoClient {
+    get client(): Kurento.Client.IKurentoClient {
         return this._client;
     }
-    private _client: Kurento.IKurentoClient;
+    private _client: Kurento.Client.IKurentoClient;
 
     //  It means connection from current app:
     private masterConnectionCount = 0;

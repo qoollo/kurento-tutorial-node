@@ -15,14 +15,15 @@
 
 var ws,
     video,
-    webRtcPeer;
+    webRtcPeer,
+    streamUrl = 'rtsp://10.5.5.85/media/video1';
 
 window.onload = function() {
 	console = new Console('console', console);
 	video = document.getElementById('video');
 
 	var address = document.getElementById('app-server-address').value;
-	ws = new WebSocket('ws://' + address + '/call');
+	ws = new WebSocket('ws://' + address + '/control');
 	ws.onmessage = function (message) {
 	    var parsedMessage = JSON.parse(message.data);
 	    console.info('Received message: ' + message.data);
@@ -73,17 +74,13 @@ function handleViewerResponse(message) {
 }
 
 function onMasterClick() {
-	if (!webRtcPeer) {
-		showSpinner(video);
-
-		webRtcPeer = kurentoUtils.WebRtcPeer.startSendOnly(video, function(offerSdp) {
-			var message = {
-				id : 'master',
-				sdpOffer : offerSdp
-			};
-			sendMessage(message);
-		});
-	}
+    var message = {
+        action: 'AddMaster',
+        params: {
+            streamUrl: streamUrl
+        }
+    };
+    sendMessage(message);
 
 	return false;
 }

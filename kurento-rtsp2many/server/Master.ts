@@ -3,7 +3,7 @@
 
 class Master {
 
-    constructor(id: string, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline) {
+    constructor(id: string, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline, private kurentoClientManager: KurentoClientManager) {
         this._id = id;
         this._streamUrl = streamUrl;
         this._pipeline = pipeline;
@@ -71,7 +71,7 @@ class Master {
         //TODO: add more validation for every step! 
         //TODO in future: use promise.
         var onOffer = (sdpOffer: string) => {
-            var kurentoClient = kurentoClientManager.findAvailableClient();
+            var kurentoClient = this.kurentoClientManager.findAvailableClient();
 
             if (!kurentoClient) return this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
 

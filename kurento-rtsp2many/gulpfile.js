@@ -14,6 +14,7 @@ gulp.task('server-ts', function () {
 			outFile: 'server.js',
 			out: 'server.js',
 			sortOutput: true,
+		    //module: 'commonjs'
 		}));
 	
 	return tsResult.js

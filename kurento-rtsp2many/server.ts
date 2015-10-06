@@ -3,6 +3,7 @@
 /// <reference path="server/MasterManager.ts" />
 /// <reference path="server/KurentoClientManager.ts" />
 /// <reference path="typings/node.d.ts" />
+/// <reference path="typings/ws.d.ts" />
 /// <reference path="typings/kurento-client.d.ts" />
 /// <reference path="typings/kurento-utils.d.ts" />
 /// <reference path="typings/webrtc-adapter.d.ts" />
@@ -73,13 +74,13 @@ var server = app.listen(port, function () {
 var wssForView = new ws.Server({
     server: server,
     path: '/call'
-});
+}, (...args: any[]) => { console.log('call', args); });
 var viewSessionIdCounter = new IdCounter();
 
 var wssForControl = new ws.Server({
     server: server,
     path: '/control'
-});
+}, (...args: any[]) => { console.log('control', args); });
 var controlSessionIdCounter = new IdCounter();
 
 wssForControl.on('connection', function (ws) {
@@ -93,21 +94,20 @@ wssForControl.on('connection', function (ws) {
     });
 
     ws.on('close', function () {
-        console.log('Control-connection №' + sessionId + ' closed');
+        console.log('Control-connection #' + sessionId + ' closed');
     });
 
     ws.on('message', function (_message) {
-        var message = JSON.parse(_message);
-        console.log('Control-connection №' + sessionId + ' received message ', message);
-
-        var response;
+        var message = JSON.parse(_message),
+            response;
+        console.log('Control-connection #' + sessionId + ' received message:', message);
 
         switch (message.action) {
             case 'AddMaster':
-                console.log('AddMaster command');
+                console.log('"AddMaster" command called with params', message.params);
                 break;
                 if (!!message.streamUrl) {
-                    var id = masterManager.addMaster(new Master(null, message.streamUrl, null));
+                    var id = masterManager.addMaster(new Master(null, message.params.streamUrl, null, kurentoClientManager));
                     response = new ActionResponse(statuses.success, 'Master has been successfully added', id);
                 }
                 else

@@ -10,15 +10,15 @@ class MasterManager {
 
     private idCounter = new IdCounter();
 
-    addMaster(master: Master): number {
-        master.id = this.idCounter.nextUniqueId;
+    addMaster(master: Master): string {
+        master.id = this.idCounter.nextUniqueId.toString();
         this._masters.push(master);
 
         return master.id;
     }
 
     getMasterById(id: number): Master {
-        return this._masters.filter(m => m.id === id)[0];
+        return this._masters.filter(m => m.id === id.toString())[0];
     }
 
 }
