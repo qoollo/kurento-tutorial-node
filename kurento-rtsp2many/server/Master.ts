@@ -3,16 +3,16 @@
 
 class Master {
 
-    constructor(id: number, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline) {
+    constructor(id: string, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline) {
         this._id = id;
         this._streamUrl = streamUrl;
         this._pipeline = pipeline;
     }
 
-    get id(): number {
+    get id(): string {
         return this._id;
     }
-    private _id: number;
+    private _id: string;
 
     get streamUrl(): string {
         return this._streamUrl;
@@ -21,9 +21,9 @@ class Master {
 
     _viewers: Object[] = [];
 
-    private _pipeline /* : Kurento.IMediaObject*/ = null;
+    private _pipeline: Kurento.Client.IMediaPipeline = null;
 
-    private _webRtcEndpoint = null;
+    private _webRtcEndpoint: Kurento.Client.IWebRtcEndpoint = null;
 
     private _webRtcPeer = null;
 
@@ -60,8 +60,8 @@ class Master {
     get viewers(): Object[]{
         return this._viewers;
     }
-    
-    startStream(callback: (err, sdpAnswer) => void) {
+
+    startStream(callback: (err, sdpAnswer?: string) => void) {
         if (this.isOnline) {
             console.warn('WARNING! Trying to start an already running stream');
             return;
@@ -75,21 +75,25 @@ class Master {
 
             if (!kurentoClient) return this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
 
-            kurentoClient.client.create('MediaPipeline', (error, pipeline) => {
-                if (error) return this.stopStartStreamProcessWithError('An error occurred while master №' + this.id + ' trying to create media pieline', error);
+            kurentoClient.client.create('MediaPipeline', (err, p) => {
+                if (err)
+                    return callback('An error occurred while master №' + this.id + ' trying to create media pieline' + err.toString());
 
-                this._pipeline = pipeline;
+                this._pipeline = p;
 
-                this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, function (error, player) {
-                    if (error) return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create endpoint player', error);
+                this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, (err, player) => {
+                    if (err)
+                        return callback('An error occurred while master №' + this.id + ' trying to create endpoint player. ' + err.toString());
 
-                    this._pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
-                        if (error) return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint', error);
+                    this._pipeline.create('WebRtcEndpoint', (err, webRtcEndpoint) => {
+                        if (err)
+                            return callback('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint' + err.toString());
 
-                        this.webRtcEndpoint = _webRtcEndpoint;
+                        this._webRtcEndpoint = webRtcEndpoint;
 
-                        this.webRtcEndpoint.processOffer(sdpOffer, function (error, sdpAnswer) {
-                            if (error) return this.stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer', error); 
+                        this._webRtcEndpoint.processOffer(sdpOffer, (err, sdpAnswer) => {
+                            if (err)
+                                return callback('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer' + err.toString()); 
 
                             this._webRtcPeer.processSdpAnswer(sdpAnswer);
                             callback(null, sdpAnswer);
