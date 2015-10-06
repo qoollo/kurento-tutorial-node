@@ -21,4 +21,8 @@ class MasterManager {
         return this._masters.filter(m => m.id === id.toString())[0];
     }
 
+    getMasterByStreamUrl(streamUrl: string): Master {
+        return this._masters.filter(m => m.streamUrl === streamUrl)[0];
+    }
+
 }

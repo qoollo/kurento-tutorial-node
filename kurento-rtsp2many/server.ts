@@ -1,6 +1,7 @@
 ﻿/// <reference path="server/IdCounter.ts" />
 /// <reference path="server/Master.ts" />
 /// <reference path="server/MasterManager.ts" />
+/// <reference path="server/ViewerManager.ts" />
 /// <reference path="server/KurentoClientManager.ts" />
 /// <reference path="typings/node.d.ts" />
 /// <reference path="typings/ws.d.ts" />
@@ -49,8 +50,9 @@ var app = express();
 
 var idCounter = 0;
 var master: { id: string, webRtcEndpoint: Kurento.Client.IWebRtcEndpoint } = null;
-var masterManager = new MasterManager();
-var kurentoClientManager = new KurentoClientManager();
+var masterManager = new MasterManager(),
+    viewerManager = new ViewerManager();
+var kurentoClientManager = new KurentoClientManager(KurentoClient);
 var pipeline: Kurento.Client.IMediaPipeline = null;
 var viewers = {};
 var client: Kurento.Client.IKurentoClient = null;
@@ -105,28 +107,52 @@ wssForControl.on('connection', function (ws) {
         switch (message.rpc) {
             case 'AddMaster':
                 console.log('"AddMaster" command called with params', message.params);
-                if (!!message.params.streamUrl) {
-                    var master = masterManager.addMaster(new Master(null, message.params.streamUrl, null, kurentoClientManager));
-                    master.startStream((err, sdpAnswer) => {
-                        if (err)
-                            return console.error("Failed to start stream for Master #", master.id);
-                        console.log("Started stream on Master #", master.id);
-                    });
-                    response = new RpcSuccessResponse('Master has been successfully added', master.id);
-                }
+                if (!!message.params.streamUrl)
+                    response = addMasterIfNotExists(message.params.streamUrl);
                 else
                     response = new RpcErrorResponse('Message doesn`t contain camera URL', message.params.streamUrl);
+                ws.send(JSON.stringify(response));
+                break;
+            case 'AddViewer':
+                processAddViewer(sessionId, message.params.streamUrl, message.params.sdpOffer, r => ws.send(JSON.stringify(r)));
                 break;
 
             default:
                 response = new RpcErrorResponse('Unknown RPC: ', message.rpc)
+                ws.send(JSON.stringify(response));
                 break;
         }
 
-        ws.send(JSON.stringify(response));
     });
 
 })
+
+function addMasterIfNotExists(streamUrl: string): RpcResponse {
+    var master = masterManager.getMasterByStreamUrl(streamUrl);
+    if (!master)
+        master = masterManager.addMaster(new Master(null, streamUrl, null, kurentoClientManager));
+    return new RpcSuccessResponse('Master has been successfully added', master.id);
+}
+
+function processAddViewer(sessionId: number, streamUrl: string, sdpOffer: string, callback: (r: RpcResponse) => void): void {
+    var viewer = viewerManager.getViewerBySessionId(sessionId),
+        master = masterManager.getMasterByStreamUrl(streamUrl),
+        res: RpcResponse;
+    if (!master)
+        callback(new RpcErrorResponse('Master for specified StreamUrl is not created yet. Call AddMaster RPC first.', streamUrl));
+    else {
+        if (!viewer)
+            viewer = viewerManager.addViewer(new Viewer(sessionId, streamUrl, sdpOffer));
+
+        master.addViewer(viewer, (err, sdpAnswer) => {
+            if (err)
+                return console.error('Failed to add Viewer to Master.', sdpAnswer);
+            console.log('Added Viewer to Master. SdpAnswer:', sdpAnswer);
+            callback(new RpcSuccessResponse('Great success! Viewer added to Master', { rpc: 'AddViewerResponse', streamUrl: streamUrl, sdpAnswer: sdpAnswer }));
+        });
+
+    }
+}
 
 /*
  * Management of WebSocket messages

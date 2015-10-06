@@ -39,7 +39,13 @@ window.onload = function() {
 	            dispose();
 	            break;
 	        default:
-	            console.error('Unrecognized message', parsedMessage);
+	            debugger;
+	            if (parsedMessage.data && parsedMessage.data.rpc == 'AddViewerResponse')
+	                webRtcPeer.processSdpAnswer(parsedMessage.data.sdpAnswer, function () {
+	                    console.info('SdpAnswer processed');
+	                });
+	            else
+	                console.error('Unrecognized message', parsedMessage);
 	    }
 	}
 
@@ -91,8 +97,11 @@ function onViewerClick() {
 
 		webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(video, function(offerSdp) {
 			var message = {
-				id : 'viewer',
-				sdpOffer : offerSdp
+			    rpc: 'AddViewer',
+			    params: {
+			        sdpOffer: offerSdp,
+			        streamUrl: streamUrl
+			    }
 			};
 			sendMessage(message);
 		});

@@ -3,24 +3,39 @@
 
 class KurentoClientManager {
 
+    constructor(private kurentoClient: Kurento.Client.IKurentoClientConstructor) {
+
+    }
+
+    private wsUri: string = 'ws://10.5.6.119:8888/kurento';
+
     private clientCounter = new IdCounter();
 
     private clients: KurentoClientWrapper[] = []
 
-    addClient(clientUri: string, onSuccess: (client: KurentoClientWrapper, msg?: string) => void, onError: (err) => void) {
-        var existingClient = this.clients.filter(c => c.uri === clientUri)[0];
+    addClient(wsUri: string, callback: (err, client?: KurentoClientWrapper) => void) {
+        var existingClient = this.clients.filter(c => c.uri === wsUri)[0];
 
         if (existingClient)
-            onSuccess(existingClient, 'The client with the specified Uri already exists');
-        else
-            new kurentoClient(clientUri, (error, kurentoClient: Kurento.Client.IKurentoClient) => {
+            callback('The client with the specified Uri already exists');
+        else {
+            console.log('Connecting to Kurento Media Server at', wsUri);
+            new this.kurentoClient(wsUri, (error, kurentoClient: Kurento.Client.IKurentoClient) => {
                 if (error)
-                    return onError(error)
+                    return callback(error)
 
-                var innerKurrentoClient = new KurentoClientWrapper(this.clientCounter.nextUniqueId, clientUri, kurentoClient);
+                var innerKurrentoClient = new KurentoClientWrapper(this.clientCounter.nextUniqueId, wsUri, kurentoClient);
                 this.clients.push(innerKurrentoClient);
-                onSuccess(innerKurrentoClient);
+                callback(null, innerKurrentoClient);
             });
+        }
+    }
+
+    findOrCreateClient(callback: (err, client?: KurentoClientWrapper) => void): void {
+        var client = this.clients.filter(c => c.uri == this.wsUri)[0];
+        if (client)
+            return callback(client);
+        this.addClient(this.wsUri, callback);
     }
 
     getClientById(id: number): KurentoClientWrapper {
