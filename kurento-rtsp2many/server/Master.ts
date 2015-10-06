@@ -24,6 +24,9 @@ class Master {
 
     private _pipeline: Kurento.Client.IMediaPipeline = null;
 
+    private _player: Kurento.Client.IPlayerEndpoint = null;
+    private playerCreationStarted: boolean = false;
+
     private _webRtcEndpoint: Kurento.Client.IWebRtcEndpoint = null;
 
     private _webRtcPeer = null;
@@ -60,23 +63,29 @@ class Master {
             console.warn('WARNING! Trying to start an already running stream');
             return;
         }
+        this.playerCreationStarted = true;
 
         this.kurentoClientManager.findOrCreateClient((err, kurentoClient) => {
-            if (err)
+            if (err) {
                 return this.stopStartStreamProcessWithError('Failed to find or create KurentoClient.', err);
+            }
 
             kurentoClient.client.create('MediaPipeline', (err, p) => {
-                if (err)
+                if (err) {
                     return callback('An error occurred while master #' + this.id + ' trying to create media pieline' + err.toString());
+                }
 
                 console.log('MediaPipeline created for Master #', this.id);
                 this._pipeline = p;
 
                 this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, (err, player: Kurento.Client.IPlayerEndpoint) => {
-                    if (err)
+                    if (err) {
                         return callback('An error occurred while master #' + this.id + ' trying to create endpoint player. ' + err.toString());
+                    }
 
                     console.log('PlayerEndpoint created for Master #', this.id, '. Stream URL:', this._streamUrl);
+
+                    this._player = player;
                     callback(null, player);
                 })
             });
@@ -124,48 +133,68 @@ class Master {
 
         this._viewers.push(viewer);
 
-        if (this.isOffline)
+        if (this._player) {
+            console.log('PlayerEndpoint already created. Reusing existing one...');
+            this.addViewerToPlayer(this._player, viewer, callback);
+        } else {
+            console.log('Creating PlayerEndpoint...');
             this.startStream((err, player) => {
                 if (err)
                     return console.error('Failed to Add Viewer because of failure during startStream.');
+                this.addViewerToPlayer(player, viewer, callback);
+            });
+        }
+    }
 
-                this._pipeline.create('WebRtcEndpoint', (err, webRtcEndpoint) => {
+    private addViewerToPlayer(player: Kurento.Client.IPlayerEndpoint, viewer: Viewer, callback: (err, sdpAnswer?: string) => void): void {
+        this._pipeline.create('WebRtcEndpoint', (err, webRtcEndpoint) => {
+            if (err)
+                return callback('An error occurred while master #' + this.id + ' trying to create WebRtc endpoint' + err.toString());
+
+            console.log('WebRtcEndpoint created for Master #', this.id);
+            this._webRtcEndpoint = webRtcEndpoint;
+
+            var finalSdpAnswer = null,
+                playerPlaying = false;
+
+            this._webRtcEndpoint.processOffer(viewer.sdpOffer, (err, sdpAnswer) => {
+                if (err)
+                    return callback('An error occurred while WebRtc endpoint of master #' + this.id + 'trying to process offer' + err.toString());
+
+                console.log('SdpOffer processed for Master #', this.id, ' SdpOffer:', viewer.sdpOffer, '. SdpAnswer:', sdpAnswer);
+                finalSdpAnswer = sdpAnswer;
+                if (playerPlaying)
+                    callback(null, finalSdpAnswer);
+            });
+
+            this._pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=25/1', filterType: "VIDEO" }, (err, gstFilter) => {
+                if (err)
+                    return console.error("Failed to create GStreamerFilter.", err);
+
+                console.log("Successfully created GStreamerFilter.", err);
+                player.connect(gstFilter, err => {
                     if (err)
-                        return callback('An error occurred while master #' + this.id + ' trying to create WebRtc endpoint' + err.toString());
+                        return console.error("Failed to connect PLayerEndpoint to GStreamerFilter.", err);
 
-                    console.log('WebRtcEndpoint created for Master #', this.id);
-                    this._webRtcEndpoint = webRtcEndpoint;
-
-                    var finalSdpAnswer = null,
-                        playerPlaying = false;
-
-                    this._webRtcEndpoint.processOffer(viewer.sdpOffer, (err, sdpAnswer) => {
+                    console.log("Successfully connected PLayerEndpoint to GStreamerFilter.", err);
+                    gstFilter.connect(this._webRtcEndpoint, err => {
                         if (err)
-                            return callback('An error occurred while WebRtc endpoint of master #' + this.id + 'trying to process offer' + err.toString());
+                            return console.error("Failed to connect GStreamerFilter to WebRtcEndpoint", err);
 
-                        console.log('SdpOffer processed for Master #', this.id, ' SdpOffer:', viewer.sdpOffer, '. SdpAnswer:', sdpAnswer);
-                        finalSdpAnswer = sdpAnswer;
-                        if (playerPlaying)
-                            callback(null, finalSdpAnswer);
-                    });
-
-                    player.connect(webRtcEndpoint, err => {
-                        if (err)
-                            return console.log('Failed to connect PlayerEndpoint to WebRtcEndpoint.');
-
-                        console.log('Successfully connected PlayerEndpoint to WebRtcEndpoint.');
+                        console.log("Successfully connected GStreamerFilter to WebRtcEndpoint.", err);
                         player.play(err => {
                             if (err)
                                 return console.error('Failed to start playing.');
 
                             console.log('Successfully started playing by PlayerEndpoint');
                             playerPlaying = true;
-                            if (finalSdpAnswer) 
+                            if (finalSdpAnswer)
                                 callback(null, finalSdpAnswer);
                         });
                     });
                 });
             });
+        });
     }
 
     private stopStartStreamProcessWithError(message: string, error: any = null) {
@@ -201,15 +230,4 @@ class Master {
 
         this._webRtcEndpoint = null;
     }
-}
-
-class CpsSyncHelper {
-
-    public addCallback(callback): void {
-        this.callbacks.push(callback);
-    }
-
-
-    private callbacks: [] = [];
-
 }
