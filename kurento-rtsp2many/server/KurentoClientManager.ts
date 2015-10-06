@@ -13,7 +13,7 @@ class KurentoClientManager {
         if (existingClient)
             onSuccess(existingClient, 'The client with the specified Uri already exists');
         else
-            kurento(clientUri, (error, kurentoClient: Kurento.IKurentoClient) => {
+            KurentoClient(clientUri, (error, kurentoClient: Kurento.IKurentoClient) => {
                 if (error)
                     return onError(error)
 

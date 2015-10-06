@@ -2,6 +2,10 @@
 /// <reference path="server/Master.ts" />
 /// <reference path="server/MasterManager.ts" />
 /// <reference path="server/KurentoClientManager.ts" />
+/// <reference path="typings/node.d.ts" />
+/// <reference path="typings/kurento-client.d.ts" />
+/// <reference path="typings/kurento-utils.d.ts" />
+/// <reference path="typings/webrtc-adapter.d.ts" />
 
 /*
  * (C) Copyright 2014 Kurento (http://kurento.org/)
@@ -23,7 +27,7 @@ var express = require('express');
 var ws = require('ws');
 var minimist = require('minimist');
 var url = require('url');
-var kurento = require('kurento-client');
+var KurentoClient: Kurento.Client.IKurentoClientConstructor = require('kurento-client');
 var kurentoUtils: Kurento.Utils.IKurentoUtils = require('kurento-utils');
 
 var argv = minimist(process.argv.slice(2),
@@ -43,12 +47,12 @@ var app = express();
  */
 
 var idCounter = 0;
-var master = null;
+var master: { id: string, webRtcEndpoint: Kurento.Client.IWebRtcEndpoint } = null;
 var masterManager = new MasterManager();
 var kurentoClientManager = new KurentoClientManager();
-var pipeline = null;
+var pipeline: Kurento.Client.IMediaPipeline = null;
 var viewers = {};
-var kurentoClient = null;
+var client: Kurento.Client.IKurentoClient = null;
 
 function nextUniqueId() {
     idCounter++;
@@ -205,20 +209,19 @@ function addMaster() {
 }
 
 // Recover kurentoClient for the first time.
-function getKurentoClient(callback) {
-    if (kurentoClient !== null) {
-        return callback(null, kurentoClient);
+function getKurentoClient(callback: (err: any, client?: Kurento.Client.IKurentoClient) => any): any {
+    if (client !== null) {
+        return callback(null, client);
     }
 
-    kurento(argv.ws_uri, function (error, _kurentoClient) {
-        if (error) {
+    new KurentoClient(argv.ws_uri, (err, c) => {
+        if (err) {
             console.log("Coult not find media server at address " + argv.ws_uri);
-            return callback("Could not find media server at address" + argv.ws_uri
-                + ". Exiting with error " + error);
+            return callback("Could not find media server at address" + argv.ws_uri + ". Exiting with error " + err);
         }
 
-        kurentoClient = _kurentoClient;
-        callback(null, kurentoClient);
+        client = c;
+        callback(null, client);
     });
 }
 
@@ -236,7 +239,7 @@ function startMaster(id, sdp, ws, callback) {
         stop(id, ws);
     }
 
-    getKurentoClient(function (error, kurentoClient) {
+    getKurentoClient((error, kurentoClient) => {
         if (error) {
             stop(id, ws);
             return callback(error);
@@ -246,7 +249,7 @@ function startMaster(id, sdp, ws, callback) {
             return callback('Request was cancelled by the user. You will not be sending any longer');
         }
 
-        kurentoClient.create('MediaPipeline', function (error, _pipeline) {
+        kurentoClient.create('MediaPipeline', (error, p) => {
             if (error) {
                 return callback(error);
             }
@@ -255,8 +258,8 @@ function startMaster(id, sdp, ws, callback) {
                 return callback('Request was cancelled by the user. You will not be sending any longer');
             }
 
-            pipeline = _pipeline;
-            pipeline.create('WebRtcEndpoint', function (error, webRtcEndpoint) {
+            pipeline = p;
+            pipeline.create('WebRtcEndpoint', (error, webRtcEndpoint) => {
                 if (error) {
                     stop(id, ws);
                     return callback(error);
@@ -268,7 +271,7 @@ function startMaster(id, sdp, ws, callback) {
 
                 master.webRtcEndpoint = webRtcEndpoint;
 
-                webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) {
+                webRtcEndpoint.processOffer(sdp, (error, sdpAnswer) => {
                     if (error) {
                         stop(id, ws)
                         return callback(error);
@@ -294,7 +297,7 @@ function startViewer(id, sdp, ws, callback) {
         return callback("You are already viewing in this session. Use a different browser to add additional viewers.")
     }
 
-    pipeline.create('WebRtcEndpoint', function (error, webRtcEndpoint) {
+    pipeline.create('WebRtcEndpoint', (error, webRtcEndpoint) => {
         if (error) {
             return callback(error);
         }
@@ -311,7 +314,7 @@ function startViewer(id, sdp, ws, callback) {
             return callback("No active sender now. Become sender or . Try again later ...");
         }
 
-        webRtcEndpoint.processOffer(sdp, function (error, sdpAnswer) {
+        webRtcEndpoint.processOffer(sdp, (error, sdpAnswer) => {
             if (error) {
                 stop(id, ws);
                 return callback(error);
@@ -322,7 +325,7 @@ function startViewer(id, sdp, ws, callback) {
                 return callback("No active sender now. Become sender or . Try again later ...");
             }
 
-            master.webRtcEndpoint.connect(webRtcEndpoint, function (error) {
+            master.webRtcEndpoint.connect(webRtcEndpoint, (error) => {
                 if (error) {
                     stop(id, ws);
                     return callback(error);
@@ -363,7 +366,7 @@ function removeSender() {
     sender = null;
 }
 
-function stop(id, ws) {
+function stop(id: string, ws: string): void {
     if (master !== null && master.id == id) {
         for (var ix in viewers) {
             var viewer = viewers[ix];

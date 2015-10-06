@@ -1,8 +1,9 @@
-﻿
+﻿/// <reference path="../typings/kurento-client.d.ts" />
+/// <reference path="../typings/kurento-utils.d.ts" />
 
 class Master {
 
-    constructor(id: number, streamUrl: string, pipeline: Kurento.IMediaPipeline) {
+    constructor(id: number, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline) {
         this._id = id;
         this._streamUrl = streamUrl;
         this._pipeline = pipeline;
