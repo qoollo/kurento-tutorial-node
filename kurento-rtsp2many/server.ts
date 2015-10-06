@@ -105,7 +105,7 @@ wssForControl.on('connection', function (ws) {
         switch (message.rpc) {
             case 'AddMaster':
                 console.log('"AddMaster" command called with params', message.params);
-                if (!!message.streamUrl) {
+                if (!!message.params.streamUrl) {
                     var id = masterManager.addMaster(new Master(null, message.params.streamUrl, null, kurentoClientManager));
                     response = new RpcSuccessResponse('Master has been successfully added', id);
                 }
