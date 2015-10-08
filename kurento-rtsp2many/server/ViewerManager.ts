@@ -1,7 +1,8 @@
-/// <reference path="IdCounter.ts" />
-/// <reference path="Master.ts" />
 
-class ViewerManager {
+import IdCounterModule = require('./IdCounter');
+var IdCounter = IdCounterModule.IdCounter;
+
+export class ViewerManager {
 
     get viewers(): Viewer[] {
         return this._viewers;

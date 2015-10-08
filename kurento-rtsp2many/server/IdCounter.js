@@ -20,4 +20,5 @@ var IdCounter = (function () {
     });
     return IdCounter;
 })();
+exports.IdCounter = IdCounter;
 //# sourceMappingURL=IdCounter.js.map

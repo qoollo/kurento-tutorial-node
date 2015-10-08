@@ -6,7 +6,7 @@
     <ProjectGuid>{468c654d-2759-4545-af86-3b741183ca8e}</ProjectGuid>
     <ProjectHome />
     <ProjectView>ShowAllFiles</ProjectView>
-    <StartupFile>server.js</StartupFile>
+    <StartupFile>server.ts</StartupFile>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{3AF33F2E-1136-4D97-BBB7-1795711AC8B8};{349c5851-65df-11da-9384-00065b846f21};{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}</ProjectTypeGuids>
@@ -234,12 +234,34 @@
     <TypeScriptCompile Include="server\KurentoClientManager.ts" />
     <TypeScriptCompile Include="server\Master.ts" />
     <TypeScriptCompile Include="server\MasterManager.ts" />
+    <TypeScriptCompile Include="server\ViewerManager.ts" />
     <TypeScriptCompile Include="typings\es6-promise.d.ts" />
-    <TypeScriptCompile Include="typings\kurento.d.ts" />
+    <TypeScriptCompile Include="typings\express.d.ts" />
+    <TypeScriptCompile Include="typings\kurento-client.d.ts" />
+    <TypeScriptCompile Include="typings\kurento-utils.d.ts" />
+    <TypeScriptCompile Include="typings\mime.d.ts" />
+    <TypeScriptCompile Include="typings\minimist.d.ts" />
     <TypeScriptCompile Include="typings\node.d.ts" />
+    <TypeScriptCompile Include="typings\serve-static.d.ts" />
+    <TypeScriptCompile Include="typings\webrtc-adapter.d.ts" />
+    <TypeScriptCompile Include="typings\ws.d.ts" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!--Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them.-->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <TypeScriptTarget>ES5</TypeScriptTarget>
+    <TypeScriptJSXEmit>None</TypeScriptJSXEmit>
+    <TypeScriptCompileOnSaveEnabled>True</TypeScriptCompileOnSaveEnabled>
+    <TypeScriptNoImplicitAny>False</TypeScriptNoImplicitAny>
+    <TypeScriptRemoveComments>False</TypeScriptRemoveComments>
+    <TypeScriptOutFile>
+    </TypeScriptOutFile>
+    <TypeScriptOutDir />
+    <TypeScriptGeneratesDeclarations>False</TypeScriptGeneratesDeclarations>
+    <TypeScriptNoEmitOnError>True</TypeScriptNoEmitOnError>
+    <TypeScriptMapRoot />
+    <TypeScriptSourceRoot />
+  </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsTools.targets" />
   <ProjectExtensions>

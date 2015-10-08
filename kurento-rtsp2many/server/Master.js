@@ -1,7 +1,16 @@
+/// <reference path="../typings/kurento-client.d.ts" />
+/// <reference path="../typings/kurento-utils.d.ts" />
+/// <reference path="./Viewer.ts" />
+/// <reference path="./KurentoClientManager.ts" />
+var KurentoClientManagerModule = require('./KurentoClientManager');
+var KurentoClientManager = KurentoClientManagerModule.KurentoClientManager;
 var Master = (function () {
-    function Master(id, streamUrl, pipeline) {
+    function Master(id, streamUrl, pipeline, kurentoClientManager) {
+        this.kurentoClientManager = kurentoClientManager;
         this._viewers = [];
-        this._pipeline /* : Kurento.IMediaObject*/ = null;
+        this._pipeline = null;
+        this._player = null;
+        this.playerCreationStarted = false;
         this._webRtcEndpoint = null;
         this._webRtcPeer = null;
         this._id = id;
@@ -22,12 +31,6 @@ var Master = (function () {
         enumerable: true,
         configurable: true
     });
-    Master.prototype.addViewer = function (viewer) {
-        this._viewers.push(viewer);
-        if (this.isOffline)
-            this.startStream(null);
-    };
-    ;
     Master.prototype.removeViewer = function (viewer) {
         var index = this._viewers.indexOf(viewer);
         if (index == -1)
@@ -71,38 +74,115 @@ var Master = (function () {
             console.warn('WARNING! Trying to start an already running stream');
             return;
         }
+        this.playerCreationStarted = true;
+        this.kurentoClientManager.findOrCreateClient(function (err, kurentoClient) {
+            if (err) {
+                return _this.stopStartStreamProcessWithError('Failed to find or create KurentoClient.', err);
+            }
+            kurentoClient.client.create('MediaPipeline', function (err, p) {
+                if (err) {
+                    return callback('An error occurred while master #' + _this.id + ' trying to create media pieline' + err.toString());
+                }
+                console.log('MediaPipeline created for Master #', _this.id);
+                _this._pipeline = p;
+                _this._pipeline.create("PlayerEndpoint", { uri: _this._streamUrl }, function (err, player) {
+                    if (err) {
+                        return callback('An error occurred while master #' + _this.id + ' trying to create endpoint player. ' + err.toString());
+                    }
+                    console.log('PlayerEndpoint created for Master #', _this.id, '. Stream URL:', _this._streamUrl);
+                    _this._player = player;
+                    callback(null, player);
+                });
+            });
+        });
         //TODO: add more validation for every step! 
         //TODO in future: use promise.
-        var onOffer = function (sdpOffer) {
-            var kurentoClient = kurentoClientManager.findAvailableClient();
-            if (!kurentoClient)
-                return _this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
-            kurentoClient.client.create('MediaPipeline', function (error, pipeline) {
-                if (error)
-                    return _this.stopStartStreamProcessWithError('An error occurred while master №' + _this.id + ' trying to create media pieline', error);
-                _this._pipeline = pipeline;
-                _this._pipeline.create("PlayerEndpoint", { uri: _this._streamUrl }, function (error, player) {
-                    if (error)
-                        return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create endpoint player', error);
-                    this._pipeline.create('WebRtcEndpoint', function (error, _webRtcEndpoint) {
-                        if (error)
-                            return this.stopProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRtc endpoint', error);
-                        this.webRtcEndpoint = _webRtcEndpoint;
-                        this.webRtcEndpoint.processOffer(sdpOffer, function (error, sdpAnswer) {
-                            if (error)
-                                return this.stopProcessWithError('An error occurred while WebRtc endpoint of master №' + this.id + 'trying to process offer', error);
-                            this._webRtcPeer.processSdpAnswer(sdpAnswer);
-                            callback(null, sdpAnswer);
+        //var onOffer = (sdpOffer: string) => {
+        //    var kurentoClient = this.kurentoClientManager.findAvailableClient();
+        //    if (!kurentoClient)
+        //        return this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
+        //    kurentoClient.client.create('MediaPipeline', (err, p) => {
+        //        if (err)
+        //            return callback('An error occurred while master #' + this.id + ' trying to create media pieline' + err.toString());
+        //        console.log('MediaPipeline created for Master #', this.id);
+        //        this._pipeline = p;
+        //        this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, (err, player) => {
+        //            if (err)
+        //                return callback('An error occurred while master #' + this.id + ' trying to create endpoint player. ' + err.toString());
+        //            console.log('PlayerEndpoint created for Master #', this.id, '. Stream URL:', this._streamUrl);
+        //        })
+        //    })
+        //}
+        //this._webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(
+        //    <HTMLVideoElement>{},
+        //    onOffer,
+        //    (error) => { this.stopStartStreamProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRTC peer', error) },
+        //    null, null, null);
+    };
+    Master.prototype.addViewer = function (viewer, callback) {
+        var _this = this;
+        if (this._viewers.some(function (v) { return v.sessionId == viewer.sessionId; })) {
+            console.warn("Viewer #", viewer.sessionId, " is already added to Master #", this.id);
+            return;
+        }
+        this._viewers.push(viewer);
+        if (this._player) {
+            console.log('PlayerEndpoint already created. Reusing existing one...');
+            this.addViewerToPlayer(this._player, viewer, callback);
+        }
+        else {
+            console.log('Creating PlayerEndpoint...');
+            this.startStream(function (err, player) {
+                if (err)
+                    return console.error('Failed to Add Viewer because of failure during startStream.');
+                _this.addViewerToPlayer(player, viewer, callback);
+            });
+        }
+    };
+    Master.prototype.addViewerToPlayer = function (player, viewer, callback) {
+        var _this = this;
+        this._pipeline.create('WebRtcEndpoint', function (err, webRtcEndpoint) {
+            if (err)
+                return callback('An error occurred while master #' + _this.id + ' trying to create WebRtc endpoint' + err.toString());
+            console.log('WebRtcEndpoint created for Master #', _this.id);
+            _this._webRtcEndpoint = webRtcEndpoint;
+            var finalSdpAnswer = null, playerPlaying = false;
+            _this._webRtcEndpoint.processOffer(viewer.sdpOffer, function (err, sdpAnswer) {
+                if (err)
+                    return callback('An error occurred while WebRtc endpoint of master #' + _this.id + 'trying to process offer' + err.toString());
+                console.log('SdpOffer processed for Master #', _this.id, ' SdpOffer:', viewer.sdpOffer, '. SdpAnswer:', sdpAnswer);
+                finalSdpAnswer = sdpAnswer;
+                if (playerPlaying)
+                    callback(null, finalSdpAnswer);
+            });
+            _this._pipeline.create('GStreamerFilter', { command: 'capsfilter caps=video/x-raw,framerate=25/1', filterType: "VIDEO" }, function (err, gstFilter) {
+                if (err)
+                    return console.error("Failed to create GStreamerFilter.", err);
+                console.log("Successfully created GStreamerFilter.", err);
+                player.connect(gstFilter, function (err) {
+                    if (err)
+                        return console.error("Failed to connect PLayerEndpoint to GStreamerFilter.", err);
+                    console.log("Successfully connected PLayerEndpoint to GStreamerFilter.", err);
+                    gstFilter.connect(_this._webRtcEndpoint, function (err) {
+                        if (err)
+                            return console.error("Failed to connect GStreamerFilter to WebRtcEndpoint", err);
+                        console.log("Successfully connected GStreamerFilter to WebRtcEndpoint.", err);
+                        player.play(function (err) {
+                            if (err)
+                                return console.error('Failed to start playing.');
+                            console.log('Successfully started playing by PlayerEndpoint');
+                            playerPlaying = true;
+                            if (finalSdpAnswer)
+                                callback(null, finalSdpAnswer);
                         });
                     });
                 });
             });
-        };
-        this._webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly({}, onOffer, function (error) { _this.stopStartStreamProcessWithError('An error occurred while master №' + _this.id + ' trying to create WebRTC peer', error); }, null, null, null);
+        });
     };
     Master.prototype.stopStartStreamProcessWithError = function (message, error) {
         if (error === void 0) { error = null; }
-        console.log('ERROR! ' + message, error || '');
+        console.error('ERROR! ' + message, error || '');
         this.disposeMasterMediaObjects();
         return message;
     };
@@ -124,4 +204,5 @@ var Master = (function () {
     };
     return Master;
 })();
+exports.Master = Master;
 //# sourceMappingURL=Master.js.map

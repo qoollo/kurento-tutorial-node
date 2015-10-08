@@ -1,10 +1,14 @@
 ﻿/// <reference path="../typings/kurento-client.d.ts" />
 /// <reference path="../typings/kurento-utils.d.ts" />
 /// <reference path="./Viewer.ts" />
+/// <reference path="./KurentoClientManager.ts" />
 
-class Master {
+import KurentoClientManagerModule = require('./KurentoClientManager');
+var KurentoClientManager = KurentoClientManagerModule.KurentoClientManager;
 
-    constructor(id: string, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline, private kurentoClientManager: KurentoClientManager) {
+export class Master {
+
+    constructor(id: string, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline, private kurentoClientManager: KurentoClientManagerModule.KurentoClientManager) {
         this._id = id;
         this._streamUrl = streamUrl;
         this._pipeline = pipeline;

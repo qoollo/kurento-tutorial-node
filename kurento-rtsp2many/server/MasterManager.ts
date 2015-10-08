@@ -1,7 +1,12 @@
-﻿/// <reference path="IdCounter.ts" />
-/// <reference path="Master.ts" />
+﻿/// <reference path="Master.ts" />
 
-class MasterManager {
+import IdCounterModule = require('./IdCounter');
+var IdCounter = IdCounterModule.IdCounter;
+
+import MasterModule = require('./Master');
+type Master = MasterModule.Master;
+
+export class MasterManager {
 
     get masters(): Master[]{
         return this._masters;
@@ -10,7 +15,7 @@ class MasterManager {
 
     private idCounter = new IdCounter();
 
-    addMaster(master: Master): Master {
+    addMaster(master: MasterModule.Master): Master {
         master.id = this.idCounter.nextUniqueId.toString();
         this._masters.push(master);
 
@@ -21,7 +26,7 @@ class MasterManager {
         return this._masters.filter(m => m.id === id.toString())[0];
     }
 
-    getMasterByStreamUrl(streamUrl: string): Master {
+    getMasterByStreamUrl(streamUrl: string): MasterModule.Master {
         return this._masters.filter(m => m.streamUrl === streamUrl)[0];
     }
 

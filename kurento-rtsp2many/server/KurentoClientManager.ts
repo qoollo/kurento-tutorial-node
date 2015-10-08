@@ -1,7 +1,7 @@
-﻿/// <reference path="IdCounter.ts" />
+﻿import IdCounterModule = require('./IdCounter');
+var IdCounter = IdCounterModule.IdCounter;
 
-
-class KurentoClientManager {
+export class KurentoClientManager {
 
     constructor(private kurentoClient: Kurento.Client.IKurentoClientConstructor) {
 
