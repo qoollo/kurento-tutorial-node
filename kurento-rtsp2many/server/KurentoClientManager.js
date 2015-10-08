@@ -1,5 +1,4 @@
-var IdCounterModule = require('./IdCounter');
-var IdCounter = IdCounterModule.IdCounter;
+var IdCounter = require('./IdCounter');
 var KurentoClientManager = (function () {
     function KurentoClientManager(kurentoClient) {
         this.kurentoClient = kurentoClient;
@@ -43,7 +42,6 @@ var KurentoClientManager = (function () {
     };
     return KurentoClientManager;
 })();
-exports.KurentoClientManager = KurentoClientManager;
 var KurentoClientWrapper = (function () {
     function KurentoClientWrapper(id, uri, client) {
         var _this = this;
@@ -84,4 +82,5 @@ var KurentoClientWrapper = (function () {
     });
     return KurentoClientWrapper;
 })();
+module.exports = KurentoClientManager;
 //# sourceMappingURL=KurentoClientManager.js.map

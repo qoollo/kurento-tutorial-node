@@ -1,8 +1,7 @@
 
-import IdCounterModule = require('./IdCounter');
-var IdCounter = IdCounterModule.IdCounter;
+import IdCounter = require('./IdCounter');
 
-export class ViewerManager {
+class ViewerManager {
 
     get viewers(): Viewer[] {
         return this._viewers;
@@ -27,3 +26,5 @@ export class ViewerManager {
     }
 
 }
+
+export = ViewerManager;

@@ -3,12 +3,11 @@
 /// <reference path="./Viewer.ts" />
 /// <reference path="./KurentoClientManager.ts" />
 
-import KurentoClientManagerModule = require('./KurentoClientManager');
-var KurentoClientManager = KurentoClientManagerModule.KurentoClientManager;
+import KurentoClientManager = require('./KurentoClientManager');
 
-export class Master {
+class Master {
 
-    constructor(id: string, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline, private kurentoClientManager: KurentoClientManagerModule.KurentoClientManager) {
+    constructor(id: string, streamUrl: string, pipeline: Kurento.Client.IMediaPipeline, private kurentoClientManager: KurentoClientManager) {
         this._id = id;
         this._streamUrl = streamUrl;
         this._pipeline = pipeline;
@@ -94,39 +93,6 @@ export class Master {
                 })
             });
         });
-
-        
-        
-
-        //TODO: add more validation for every step! 
-        //TODO in future: use promise.
-        //var onOffer = (sdpOffer: string) => {
-        //    var kurentoClient = this.kurentoClientManager.findAvailableClient();
-
-        //    if (!kurentoClient)
-        //        return this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
-
-        //    kurentoClient.client.create('MediaPipeline', (err, p) => {
-        //        if (err)
-        //            return callback('An error occurred while master #' + this.id + ' trying to create media pieline' + err.toString());
-
-        //        console.log('MediaPipeline created for Master #', this.id);
-        //        this._pipeline = p;
-
-        //        this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, (err, player) => {
-        //            if (err)
-        //                return callback('An error occurred while master #' + this.id + ' trying to create endpoint player. ' + err.toString());
-
-        //            console.log('PlayerEndpoint created for Master #', this.id, '. Stream URL:', this._streamUrl);
-        //        })
-        //    })
-        //}
-
-        //this._webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(
-        //    <HTMLVideoElement>{},
-        //    onOffer,
-        //    (error) => { this.stopStartStreamProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRTC peer', error) },
-        //    null, null, null);
     }
 
     public addViewer(viewer: Viewer, callback: (err, sdpAnswer?: string) => void): void {
@@ -235,3 +201,5 @@ export class Master {
         this._webRtcEndpoint = null;
     }
 }
+
+export = Master

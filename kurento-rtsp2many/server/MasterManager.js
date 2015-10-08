@@ -1,6 +1,4 @@
-/// <reference path="Master.ts" />
-var IdCounterModule = require('./IdCounter');
-var IdCounter = IdCounterModule.IdCounter;
+var IdCounter = require('./IdCounter');
 var MasterManager = (function () {
     function MasterManager() {
         this._masters = [];
@@ -26,5 +24,5 @@ var MasterManager = (function () {
     };
     return MasterManager;
 })();
-exports.MasterManager = MasterManager;
+module.exports = MasterManager;
 //# sourceMappingURL=MasterManager.js.map

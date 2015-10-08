@@ -2,8 +2,6 @@
 /// <reference path="../typings/kurento-utils.d.ts" />
 /// <reference path="./Viewer.ts" />
 /// <reference path="./KurentoClientManager.ts" />
-var KurentoClientManagerModule = require('./KurentoClientManager');
-var KurentoClientManager = KurentoClientManagerModule.KurentoClientManager;
 var Master = (function () {
     function Master(id, streamUrl, pipeline, kurentoClientManager) {
         this.kurentoClientManager = kurentoClientManager;
@@ -95,29 +93,6 @@ var Master = (function () {
                 });
             });
         });
-        //TODO: add more validation for every step! 
-        //TODO in future: use promise.
-        //var onOffer = (sdpOffer: string) => {
-        //    var kurentoClient = this.kurentoClientManager.findAvailableClient();
-        //    if (!kurentoClient)
-        //        return this.stopStartStreamProcessWithError('Trying to start stream when no one kurento client is exists');
-        //    kurentoClient.client.create('MediaPipeline', (err, p) => {
-        //        if (err)
-        //            return callback('An error occurred while master #' + this.id + ' trying to create media pieline' + err.toString());
-        //        console.log('MediaPipeline created for Master #', this.id);
-        //        this._pipeline = p;
-        //        this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, (err, player) => {
-        //            if (err)
-        //                return callback('An error occurred while master #' + this.id + ' trying to create endpoint player. ' + err.toString());
-        //            console.log('PlayerEndpoint created for Master #', this.id, '. Stream URL:', this._streamUrl);
-        //        })
-        //    })
-        //}
-        //this._webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(
-        //    <HTMLVideoElement>{},
-        //    onOffer,
-        //    (error) => { this.stopStartStreamProcessWithError('An error occurred while master №' + this.id + ' trying to create WebRTC peer', error) },
-        //    null, null, null);
     };
     Master.prototype.addViewer = function (viewer, callback) {
         var _this = this;
@@ -204,5 +179,5 @@ var Master = (function () {
     };
     return Master;
 })();
-exports.Master = Master;
+module.exports = Master;
 //# sourceMappingURL=Master.js.map

@@ -1,7 +1,6 @@
-﻿import IdCounterModule = require('./IdCounter');
-var IdCounter = IdCounterModule.IdCounter;
+﻿import IdCounter = require('./IdCounter');
 
-export class KurentoClientManager {
+class KurentoClientManager {
 
     constructor(private kurentoClient: Kurento.Client.IKurentoClientConstructor) {
 
@@ -92,5 +91,6 @@ class KurentoClientWrapper {
 
 }
 
+export = KurentoClientManager;
 
 

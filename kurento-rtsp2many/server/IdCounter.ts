@@ -1,5 +1,5 @@
 ﻿
-export class IdCounter {
+class IdCounter {
 
     constructor(startId: number = 0) {
         this._lastId = startId - 1;
@@ -15,3 +15,5 @@ export class IdCounter {
         return this._lastId;
     }
 }
+
+export = IdCounter;

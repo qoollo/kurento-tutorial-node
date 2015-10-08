@@ -21,20 +21,15 @@ import url = require('url');
 var KurentoClient: Kurento.Client.IKurentoClientConstructor = require('kurento-client');
 var kurentoUtils: Kurento.Utils.IKurentoUtils = require('kurento-utils');
 
-import MasterManagerModule = require('./server/MasterManager');
-var MasterManager = MasterManagerModule.MasterManager;
+import MasterManager = require('./server/MasterManager');
 
-import MasterModule = require('./server/Master');
-var Master = MasterModule.Master;
+import Master = require('./server/Master');
 
-import ViewerManagerModule = require('./server/ViewerManager');
-var ViewerManager = ViewerManagerModule.ViewerManager;
+import ViewerManager = require('./server/ViewerManager');
 
-import IdCounterModule = require('./server/IdCounter');
-var IdCounter = IdCounterModule.IdCounter;
+import IdCounter = require('./server/IdCounter');
 
-import KurentoClientManagerModule = require('./server/KurentoClientManager');
-var KurentoClientManager = KurentoClientManagerModule.KurentoClientManager;
+import KurentoClientManager = require('./server/KurentoClientManager');
 
 var argv = minimist(process.argv.slice(2),
     {

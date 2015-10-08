@@ -1,5 +1,4 @@
-var IdCounterModule = require('./IdCounter');
-var IdCounter = IdCounterModule.IdCounter;
+var IdCounter = require('./IdCounter');
 var ViewerManager = (function () {
     function ViewerManager() {
         this._viewers = [];
@@ -25,5 +24,5 @@ var ViewerManager = (function () {
     };
     return ViewerManager;
 })();
-exports.ViewerManager = ViewerManager;
+module.exports = ViewerManager;
 //# sourceMappingURL=ViewerManager.js.map
