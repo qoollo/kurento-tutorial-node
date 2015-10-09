@@ -8,6 +8,42 @@ import CrossbarConfig = require('./CrossbarConfig');
 
 class KurentoHubServer {
 
+    private connectionManager: WampRouterConnectionManager;
+
+    constructor() {
+        this.connectionManager = new WampRouterConnectionManager();
+    }
+
+    start(): Promise<void> {
+        return this.connectionManager.start()
+            .then(s => this.registerRpcs(s))
+            .then(registrations => {
+                debugger;
+            });
+    }
+
+    stop(): Promise<void> {
+        return this.connectionManager.stop();
+    }
+
+    private registerRpcs(session: autobahn.Session): Promise<autobahn.IRegistration[]> {
+        var res = Promise.all([
+            session.register('com.kurentoHub.register', (args, kwargs) => this.register())
+        ]);
+        res.catch(err => {
+            logger.error('KurentoHubServer Failed to register RPCs.', err);
+            Promise.reject(err);
+        });
+        return res;
+    }
+
+    register(): number {
+        return 1;
+    }
+}
+
+class WampRouterConnectionManager {
+
     private connectionState: ConnectionState;
     private connection: autobahn.Connection = null;
     private session: autobahn.Session = null;
@@ -16,7 +52,7 @@ class KurentoHubServer {
         this.connectionState = ConnectionState.NotCreated;
     }
 
-    start(): Promise<void> {
+    start(): Promise<autobahn.Session> {
         if (this.connectionState === ConnectionState.Connecting || this.connectionState === ConnectionState.Connected) {
             var err = 'KurentoHubServer.start() cannot be called while KurentoHubServer is started.';
             logger.error(err);
@@ -30,6 +66,23 @@ class KurentoHubServer {
             });
     }
 
+    stop(): Promise<void> {
+        if (this.connectionState !== ConnectionState.Connected) {
+            var err = 'KurentoHubServer.stop() cannot be called while KurentoHubServer is not connected.';
+            logger.error(err);
+            throw new Error(err);
+        }
+
+        return new Promise<void>((resolve, reject) => {
+            this.connection.close('Deliberate closing', 'Close please');
+            var original = this.connection.onclose;
+            this.connection.onclose = (r, d) => {
+                resolve();
+                return original(r, d);
+            }
+        });
+    }
+
     private onConnectionOpened(session: autobahn.Session, details: any): void {
         logger.info('Connection #%d opened.', session.id);
         this.session = session;
@@ -39,6 +92,8 @@ class KurentoHubServer {
     private onConnectionClosed(reason: string, details: any): boolean {
         logger.info('Connection to WAMP Router closed. Reason:', reason);
         this.connectionState = ConnectionState.Disconnected;
+        this.connection = null;
+        this.session = null;
         return false;
     }
 
@@ -55,11 +110,11 @@ class KurentoHubServer {
         });
     }
 
-    private openConnection(connection: autobahn.Connection): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
+    private openConnection(connection: autobahn.Connection): Promise<autobahn.Session> {
+        return new Promise((resolve, reject) => {
             connection.onopen = (s, d) => {
                 this.onConnectionOpened(s, d);
-                resolve();
+                resolve(s);
             };
             connection.onclose = (r, d) => this.onConnectionClosed(r, d);
             connection.open();
