@@ -9,6 +9,8 @@ bower_components/
 .vs/
 .ntvs_analysis.dat
 obj/
+bin/
+logs/
 
 # kurento-rtsp2many
 kurento-rtsp2many/server.js

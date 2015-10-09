@@ -14,6 +14,7 @@
  */
 
 import path = require('path');
+import fs = require('fs');
 import express = require('express');
 import ws = require('ws');
 import minimist = require('minimist');
@@ -21,14 +22,14 @@ import url = require('url');
 var KurentoClient: Kurento.Client.IKurentoClientConstructor = require('kurento-client');
 var kurentoUtils: Kurento.Utils.IKurentoUtils = require('kurento-utils');
 
+import logger = require('./server/Logger'); 
+
+logger.info('KurentoHub started.');
+
 import MasterManager = require('./server/MasterManager');
-
 import Master = require('./server/Master');
-
 import ViewerManager = require('./server/ViewerManager');
-
 import IdCounter = require('./server/IdCounter');
-
 import KurentoClientManager = require('./server/KurentoClientManager');
 
 var argv = minimist(process.argv.slice(2),
@@ -68,40 +69,40 @@ function nextUniqueId() {
 var asUrl = url.parse(argv['as_uri']);
 var port = asUrl.port;
 var server = app.listen(port, function () {
-    console.log('Kurento Tutorial started');
-    console.log('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
+    logger.info('Kurento Tutorial started');
+    logger.info('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
 });
 
-console.log('Starting WebSocket...');
+logger.info('Starting WebSocket...');
 
 var wssForControl = new ws.Server({
     server: server,
     path: '/control'
-}, (...args: any[]) => { console.log('control', args); });
+}, (...args: any[]) => { logger.info('control', args); });
 var controlSessionIdCounter = new IdCounter();
 
 wssForControl.on('connection', function (ws) {
 
     var sessionId = controlSessionIdCounter.nextUniqueId;
 
-    console.log('Connection for control received. Session id: ' + sessionId);
+    logger.info('Connection for control received. Session id: ' + sessionId);
 
     ws.on('error', function (error) {
-        console.log('There was an error in the control-connection №' + sessionId, error);
+        logger.info('There was an error in the control-connection №' + sessionId, error);
     });
 
     ws.on('close', function () {
-        console.log('Control-connection #' + sessionId + ' closed');
+        logger.info('Control-connection #' + sessionId + ' closed');
     });
 
     ws.on('message', function (_message) {
         var message = JSON.parse(_message),
             response;
-        console.log('Control-connection #' + sessionId + ' received message:', message);
+        logger.info('Control-connection #' + sessionId + ' received message:', message);
 
         switch (message.rpc) {
             case 'AddMaster':
-                console.log('"AddMaster" command called with params', message.params);
+                logger.info('"AddMaster" command called with params', message.params);
                 if (!!message.params.streamUrl)
                     response = addMasterIfNotExists(message.params.streamUrl);
                 else
@@ -141,8 +142,8 @@ function processAddViewer(sessionId: number, streamUrl: string, sdpOffer: string
 
         master.addViewer(viewer, (err, sdpAnswer) => {
             if (err)
-                return console.error('Failed to add Viewer to Master.', sdpAnswer);
-            console.log('Added Viewer to Master. SdpAnswer:', sdpAnswer);
+                return logger.error('Failed to add Viewer to Master.', sdpAnswer);
+            logger.info('Added Viewer to Master. SdpAnswer:', sdpAnswer);
             callback(new RpcSuccessResponse('Great success! Viewer added to Master', { rpc: 'AddViewerResponse', streamUrl: streamUrl, sdpAnswer: sdpAnswer }));
         });
 

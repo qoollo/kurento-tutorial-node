@@ -227,31 +227,40 @@
     <Folder Include="static\css" />
     <Folder Include="static\img" />
     <Folder Include="static\js" />
+    <Folder Include="typings\express\" />
+    <Folder Include="typings\mime\" />
+    <Folder Include="typings\minimist\" />
+    <Folder Include="typings\ws\" />
+    <Folder Include="typings\serve-static\" />
+    <Folder Include="typings\node\" />
+    <Folder Include="typings\winston\" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="server.ts" />
     <TypeScriptCompile Include="server\IdCounter.ts" />
     <TypeScriptCompile Include="server\KurentoClientManager.ts" />
+    <TypeScriptCompile Include="server\Logger.ts" />
     <TypeScriptCompile Include="server\Master.ts" />
     <TypeScriptCompile Include="server\MasterManager.ts" />
     <TypeScriptCompile Include="server\ViewerManager.ts" />
     <TypeScriptCompile Include="typings\es6-promise.d.ts" />
-    <TypeScriptCompile Include="typings\express.d.ts" />
+    <TypeScriptCompile Include="typings\express\express.d.ts" />
     <TypeScriptCompile Include="typings\kurento-client.d.ts" />
     <TypeScriptCompile Include="typings\kurento-utils.d.ts" />
-    <TypeScriptCompile Include="typings\mime.d.ts" />
-    <TypeScriptCompile Include="typings\minimist.d.ts" />
-    <TypeScriptCompile Include="typings\node.d.ts" />
-    <TypeScriptCompile Include="typings\serve-static.d.ts" />
+    <TypeScriptCompile Include="typings\mime\mime.d.ts" />
+    <TypeScriptCompile Include="typings\minimist\minimist.d.ts" />
+    <TypeScriptCompile Include="typings\node\node.d.ts" />
+    <TypeScriptCompile Include="typings\serve-static\serve-static.d.ts" />
     <TypeScriptCompile Include="typings\webrtc-adapter.d.ts" />
-    <TypeScriptCompile Include="typings\ws.d.ts" />
+    <TypeScriptCompile Include="typings\winston\winston.d.ts" />
+    <TypeScriptCompile Include="typings\ws\ws.d.ts" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!--Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them.-->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <TypeScriptTarget>ES5</TypeScriptTarget>
     <TypeScriptJSXEmit>None</TypeScriptJSXEmit>
-    <TypeScriptCompileOnSaveEnabled>True</TypeScriptCompileOnSaveEnabled>
+    <TypeScriptCompileOnSaveEnabled>False</TypeScriptCompileOnSaveEnabled>
     <TypeScriptNoImplicitAny>False</TypeScriptNoImplicitAny>
     <TypeScriptRemoveComments>False</TypeScriptRemoveComments>
     <TypeScriptOutFile>

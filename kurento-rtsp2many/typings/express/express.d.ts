@@ -8,8 +8,8 @@
     var app = express();
  =============================================== */
 
-/// <reference path="./node.d.ts" />
-/// <reference path="./serve-static.d.ts" />
+/// <reference path="../node/node.d.ts" />
+/// <reference path="../serve-static/serve-static.d.ts" />
 
 declare module Express {
 

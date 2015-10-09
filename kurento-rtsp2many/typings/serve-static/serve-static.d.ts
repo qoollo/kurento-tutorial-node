@@ -8,8 +8,8 @@
     app.use(serveStatic("public/ftp", {"index": ["default.html", "default.htm"]}))
  =============================================== */
 
-/// <reference path="./express.d.ts" />
-/// <reference path="./mime.d.ts" />
+/// <reference path="../express/express.d.ts" />
+/// <reference path="../mime/mime.d.ts" />
 
 declare module "serve-static" {
     import * as express from "express";

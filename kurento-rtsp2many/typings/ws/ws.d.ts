@@ -3,7 +3,7 @@
 // Definitions by: Paul Loyd <https://github.com/loyd>
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
-/// <reference path="./node.d.ts" />
+/// <reference path="../node/node.d.ts" />
 
 declare module "ws" {
     import * as events from 'events';
