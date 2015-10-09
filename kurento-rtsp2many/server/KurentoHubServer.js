@@ -1,7 +1,6 @@
 //import ws = require('ws');
 var logger = require('./Logger');
 var autobahn = require('autobahn');
-var when = require('when');
 var CrossbarConfig = require('./CrossbarConfig');
 var KurentoHubServer = (function () {
     function KurentoHubServer() {
@@ -23,6 +22,9 @@ var KurentoHubServer = (function () {
         var res = Promise.all([
             session.register('com.kurentoHub.register', function (args, kwargs) { return _this.register(); })
         ]);
+        res.then(function (registrations) {
+            return registrations.forEach(function (r) { return logger.debug('KurentoHubServer RPC registered: ' + r.procedure); });
+        });
         res.catch(function (err) {
             logger.error('KurentoHubServer Failed to register RPCs.', err);
             Promise.reject(err);
@@ -43,7 +45,7 @@ var WampRouterConnectionManager = (function () {
     WampRouterConnectionManager.prototype.start = function () {
         var _this = this;
         if (this.connectionState === ConnectionState.Connecting || this.connectionState === ConnectionState.Connected) {
-            var err = 'KurentoHubServer.start() cannot be called while KurentoHubServer is started.';
+            var err = 'WampRouterConnectionManager.start() cannot be called while WampRouterConnectionManager is started.';
             logger.error(err);
             throw new Error(err);
         }
@@ -56,7 +58,7 @@ var WampRouterConnectionManager = (function () {
     WampRouterConnectionManager.prototype.stop = function () {
         var _this = this;
         if (this.connectionState !== ConnectionState.Connected) {
-            var err = 'KurentoHubServer.stop() cannot be called while KurentoHubServer is not connected.';
+            var err = 'WampRouterConnectionManager.stop() cannot be called while WampRouterConnectionManager is not connected.';
             logger.error(err);
             throw new Error(err);
         }
@@ -70,12 +72,12 @@ var WampRouterConnectionManager = (function () {
         });
     };
     WampRouterConnectionManager.prototype.onConnectionOpened = function (session, details) {
-        logger.info('Connection #%d opened.', session.id);
+        logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
         this.session = session;
         this.connectionState = ConnectionState.Connected;
     };
     WampRouterConnectionManager.prototype.onConnectionClosed = function (reason, details) {
-        logger.info('Connection to WAMP Router closed. Reason:', reason);
+        logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
         this.connectionState = ConnectionState.Disconnected;
         this.connection = null;
         this.session = null;
@@ -98,9 +100,7 @@ var WampRouterConnectionManager = (function () {
     };
     WampRouterConnectionManager.prototype.onChallenge = function (session, method, extra) {
         if (method === "wampcra") {
-            return function (session, method, extra) {
-                return when.resolve(autobahn.auth_cra.sign('secret2', extra.challenge));
-            };
+            return autobahn.auth_cra.sign('secret2', extra.challenge);
         }
     };
     WampRouterConnectionManager.prototype.openConnection = function (connection) {

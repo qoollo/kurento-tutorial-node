@@ -31,6 +31,8 @@ class KurentoHubServer {
         var res = Promise.all([
             session.register('com.kurentoHub.register', (args, kwargs) => this.register())
         ]);
+        res.then(registrations => 
+            registrations.forEach(r => logger.debug('KurentoHubServer RPC registered: ' + r.procedure)));
         res.catch(err => {
             logger.error('KurentoHubServer Failed to register RPCs.', err);
             Promise.reject(err);
@@ -55,7 +57,7 @@ class WampRouterConnectionManager {
 
     start(): Promise<autobahn.Session> {
         if (this.connectionState === ConnectionState.Connecting || this.connectionState === ConnectionState.Connected) {
-            var err = 'KurentoHubServer.start() cannot be called while KurentoHubServer is started.';
+            var err = 'WampRouterConnectionManager.start() cannot be called while WampRouterConnectionManager is started.';
             logger.error(err);
             throw new Error(err);
         }
@@ -69,7 +71,7 @@ class WampRouterConnectionManager {
 
     stop(): Promise<void> {
         if (this.connectionState !== ConnectionState.Connected) {
-            var err = 'KurentoHubServer.stop() cannot be called while KurentoHubServer is not connected.';
+            var err = 'WampRouterConnectionManager.stop() cannot be called while WampRouterConnectionManager is not connected.';
             logger.error(err);
             throw new Error(err);
         }
@@ -85,13 +87,13 @@ class WampRouterConnectionManager {
     }
 
     private onConnectionOpened(session: autobahn.Session, details: any): void {
-        logger.info('Connection #%d opened.', session.id);
+        logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
         this.session = session;
         this.connectionState = ConnectionState.Connected;
     }
 
     private onConnectionClosed(reason: string, details: any): boolean {
-        logger.info('Connection to WAMP Router closed. Reason:', reason);
+        logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
         this.connectionState = ConnectionState.Disconnected;
         this.connection = null;
         this.session = null;
@@ -116,8 +118,11 @@ class WampRouterConnectionManager {
 
     private onChallenge(session: autobahn.Session, method: string, extra: any): autobahn.OnChallengeHandler {
         if (method === "wampcra") {
-            return (session, method, extra) =>
-                when.resolve(autobahn.auth_cra.sign('secret2', extra.challenge));            
+            return <any>autobahn.auth_cra.sign('secret2', extra.challenge);
+            //return (session, method, extra) => {
+            //    debugger;
+            //    return when.resolve(autobahn.auth_cra.sign('secret2', extra.challenge));
+            //}           
         }
     }
 
