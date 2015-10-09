@@ -1,6 +1,7 @@
 //import ws = require('ws');
 var logger = require('./Logger');
 var autobahn = require('autobahn');
+var when = require('when');
 var CrossbarConfig = require('./CrossbarConfig');
 var KurentoHubServer = (function () {
     function KurentoHubServer() {
@@ -81,15 +82,26 @@ var WampRouterConnectionManager = (function () {
         return false;
     };
     WampRouterConnectionManager.prototype.createConnection = function () {
+        var _this = this;
         return new CrossbarConfig().read().then(function (cfg) {
             var port = '8080', //  TODO extract port from cfg
             path = 'kurentoHub', //  TODO extract path from cfg
             connection = new autobahn.Connection({
                 url: 'ws://127.0.0.1:' + port + '/' + path,
-                realm: 'AquaMedKurentoInteraction'
+                realm: 'AquaMedKurentoInteraction',
+                authmethods: ["wampcra"],
+                authid: 'KurentoHub',
+                onchallenge: function (session, method, extra) { return _this.onChallenge(session, method, extra); }
             });
             return connection;
         });
+    };
+    WampRouterConnectionManager.prototype.onChallenge = function (session, method, extra) {
+        if (method === "wampcra") {
+            return function (session, method, extra) {
+                return when.resolve(autobahn.auth_cra.sign('secret2', extra.challenge));
+            };
+        }
     };
     WampRouterConnectionManager.prototype.openConnection = function (connection) {
         var _this = this;

@@ -51,7 +51,25 @@
                             "type": "websocket"
                         },
                         "kurentoHub": {
-                            "type": "websocket"
+                            "type": "websocket",
+                            "auth": {
+                                "wampcra": {
+                                    "type": "static",
+                                    "users": {
+                                        "KurentoHub": {
+                                            "secret": "secret2",
+                                            "role": "KurentoHub"
+                                        },
+                                        "VideoConsumer": {
+                                            "secret": "prq7+YkJ1/KlW1X0YczMHw==",
+                                            "role": "VideoConsumer",
+                                            "salt": "salt123",
+                                            "iterations": 100,
+                                            "keylen": 16
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

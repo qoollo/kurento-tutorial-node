@@ -3,6 +3,7 @@ import http = require('http');
 //import ws = require('ws');
 import logger = require('./Logger');
 import autobahn = require('autobahn');
+import when = require('when');
 import CrossbarConfig = require('./CrossbarConfig');
 
 
@@ -103,11 +104,21 @@ class WampRouterConnectionManager {
                 path = 'kurentoHub', //  TODO extract path from cfg
                 connection = new autobahn.Connection({
                     url: 'ws://127.0.0.1:' + port + '/' + path,
-                    realm: 'AquaMedKurentoInteraction'
+                    realm: 'AquaMedKurentoInteraction', 
+                    authmethods: ["wampcra"],
+                    authid: 'KurentoHub',
+                    onchallenge: (session, method, extra) => this.onChallenge(session, method, extra)                    
                 });
 
             return connection;
         });
+    }
+
+    private onChallenge(session: autobahn.Session, method: string, extra: any): autobahn.OnChallengeHandler {
+        if (method === "wampcra") {
+            return (session, method, extra) =>
+                when.resolve(autobahn.auth_cra.sign('secret2', extra.challenge));            
+        }
     }
 
     private openConnection(connection: autobahn.Connection): Promise<autobahn.Session> {
