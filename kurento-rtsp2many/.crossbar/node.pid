@@ -1,0 +1,19 @@
+{
+   "pid": 6192, 
+   "options": {
+      "reactor": null, 
+      "loglevel": "info", 
+      "logtofile": false, 
+      "logformat": "colour", 
+      "command": "start", 
+      "logdir": null, 
+      "config": "C:\\kurento-tutorial-node\\kurento-rtsp2many\\.crossbar\\config-dev.json", 
+      "cbdir": "C:\\kurento-tutorial-node\\kurento-rtsp2many\\.crossbar"
+   }, 
+   "argv": [
+      "C:\\Python27\\Scripts\\crossbar", 
+      "start", 
+      "--config", 
+      "config-dev.json"
+   ]
+}

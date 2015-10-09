@@ -1,4 +1,4 @@
-﻿/*
+/*
  * (C) Copyright 2014 Kurento (http://kurento.org/)
  *
  * All rights reserved. This program and the accompanying materials
@@ -12,94 +12,84 @@
  * Lesser General Public License for more details.
  *
  */
-
-import path = require('path');
-import fs = require('fs');
-import express = require('express');
-import ws = require('ws');
-import minimist = require('minimist');
-import url = require('url');
-var KurentoClient: Kurento.Client.IKurentoClientConstructor = require('kurento-client');
-var kurentoUtils: Kurento.Utils.IKurentoUtils = require('kurento-utils');
-
-import logger = require('./server/Logger'); 
-
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var path = require('path');
+var express = require('express');
+var ws = require('ws');
+var minimist = require('minimist');
+var url = require('url');
+var KurentoClient = require('kurento-client');
+var kurentoUtils = require('kurento-utils');
+var logger = require('./Logger');
+var KurentoHubServer = require('./KurentoHubServer');
+var MasterManager = require('./MasterManager');
+var Master = require('./Master');
+var ViewerManager = require('./ViewerManager');
+var IdCounter = require('./IdCounter');
+var KurentoClientManager = require('./KurentoClientManager');
+var argv = minimist(process.argv.slice(2), {
+    default: {
+        as_uri: "http://localhost:8080/",
+        ws_uri: "ws://10.5.6.119:8888/kurento"
+    }
+});
 logger.info('KurentoHub started.');
-
-import MasterManager = require('./server/MasterManager');
-import Master = require('./server/Master');
-import ViewerManager = require('./server/ViewerManager');
-import IdCounter = require('./server/IdCounter');
-import KurentoClientManager = require('./server/KurentoClientManager');
-
-var argv = minimist(process.argv.slice(2),
-    {
-        default:
-        {
-            as_uri: "http://localhost:8080/",
-            ws_uri: "ws://10.5.6.119:8888/kurento"
-        }
-    });
-
 var app = express();
-
-
+var kurentoHubServer = new KurentoHubServer();
+kurentoHubServer.start().then(function () {
+    debugger;
+});
 /*
  * Definition of global variables.
  */
-
 var idCounter = 0;
-var master: { id: string, webRtcEndpoint: Kurento.Client.IWebRtcEndpoint } = null;
-var masterManager = new MasterManager(),
-    viewerManager = new ViewerManager();
+var master = null;
+var masterManager = new MasterManager(), viewerManager = new ViewerManager();
 var kurentoClientManager = new KurentoClientManager(KurentoClient);
-var pipeline: Kurento.Client.IMediaPipeline = null;
+var pipeline = null;
 var viewers = {};
-var client: Kurento.Client.IKurentoClient = null;
-
+var client = null;
 function nextUniqueId() {
     idCounter++;
     return idCounter.toString();
 }
-
 /*
  * Server startup
  */
-
 var asUrl = url.parse(argv['as_uri']);
 var port = asUrl.port;
 var server = app.listen(port, function () {
     logger.info('Kurento Tutorial started');
     logger.info('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
 });
-
 logger.info('Starting WebSocket...');
-
 var wssForControl = new ws.Server({
     server: server,
     path: '/control'
-}, (...args: any[]) => { logger.info('control', args); });
+}, function () {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i - 0] = arguments[_i];
+    }
+    logger.info('control', args);
+});
 var controlSessionIdCounter = new IdCounter();
-
 wssForControl.on('connection', function (ws) {
-
     var sessionId = controlSessionIdCounter.nextUniqueId;
-
     logger.info('Connection for control received. Session id: ' + sessionId);
-
     ws.on('error', function (error) {
         logger.info('There was an error in the control-connection №' + sessionId, error);
     });
-
     ws.on('close', function () {
         logger.info('Control-connection #' + sessionId + ' closed');
     });
-
     ws.on('message', function (_message) {
-        var message = JSON.parse(_message),
-            response;
+        var message = JSON.parse(_message), response;
         logger.info('Control-connection #' + sessionId + ' received message:', message);
-
         switch (message.rpc) {
             case 'AddMaster':
                 logger.info('"AddMaster" command called with params', message.params);
@@ -110,53 +100,40 @@ wssForControl.on('connection', function (ws) {
                 ws.send(JSON.stringify(response));
                 break;
             case 'AddViewer':
-                processAddViewer(sessionId, message.params.streamUrl, message.params.sdpOffer, r => ws.send(JSON.stringify(r)));
+                processAddViewer(sessionId, message.params.streamUrl, message.params.sdpOffer, function (r) { return ws.send(JSON.stringify(r)); });
                 break;
-
             default:
-                response = new RpcErrorResponse('Unknown RPC: ', message.rpc)
+                response = new RpcErrorResponse('Unknown RPC: ', message.rpc);
                 ws.send(JSON.stringify(response));
                 break;
         }
-
     });
-
-})
-
-function addMasterIfNotExists(streamUrl: string): RpcResponse {
+});
+function addMasterIfNotExists(streamUrl) {
     var master = masterManager.getMasterByStreamUrl(streamUrl);
     if (!master)
         master = masterManager.addMaster(new Master(null, streamUrl, null, kurentoClientManager));
     return new RpcSuccessResponse('Master has been successfully added', master.id);
 }
-
-function processAddViewer(sessionId: number, streamUrl: string, sdpOffer: string, callback: (r: RpcResponse) => void): void {
-    var viewer = viewerManager.getViewerBySessionId(sessionId),
-        master = masterManager.getMasterByStreamUrl(streamUrl),
-        res: RpcResponse;
+function processAddViewer(sessionId, streamUrl, sdpOffer, callback) {
+    var viewer = viewerManager.getViewerBySessionId(sessionId), master = masterManager.getMasterByStreamUrl(streamUrl), res;
     if (!master)
         callback(new RpcErrorResponse('Master for specified StreamUrl is not created yet. Call AddMaster RPC first.', streamUrl));
     else {
         if (!viewer)
             viewer = viewerManager.addViewer(new Viewer(sessionId, streamUrl, sdpOffer));
-
-        master.addViewer(viewer, (err, sdpAnswer) => {
+        master.addViewer(viewer, function (err, sdpAnswer) {
             if (err)
                 return logger.error('Failed to add Viewer to Master.', sdpAnswer);
             logger.info('Added Viewer to Master. SdpAnswer:', sdpAnswer);
             callback(new RpcSuccessResponse('Great success! Viewer added to Master', { rpc: 'AddViewerResponse', streamUrl: streamUrl, sdpAnswer: sdpAnswer }));
         });
-
     }
 }
-
 /*
  * Definition of functions
  */
-
-
-var sender,
-    receivers = [];
+var sender, receivers = [];
 function removeReceiver(id) {
     if (!receivers[id]) {
         return;
@@ -165,21 +142,17 @@ function removeReceiver(id) {
     receiver.webRtcEndpoint.release();
     delete receiver[id];
 }
-
 function removeSender() {
     if (sender === null) {
         return;
     }
-
     for (var ix in receivers) {
         removeReceiver(ix);
     }
-
     sender.webRtcEndpoint.release();
     sender = null;
 }
-
-function stop(id: string, ws: WebSocket): void {
+function stop(id, ws) {
     if (master !== null && master.id == id) {
         for (var ix in viewers) {
             var viewer = viewers[ix];
@@ -193,43 +166,44 @@ function stop(id: string, ws: WebSocket): void {
         pipeline.release();
         pipeline = null;
         master = null;
-    } else if (viewers[id]) {
+    }
+    else if (viewers[id]) {
         var viewer = viewers[id];
         if (viewer.webRtcEndpoint)
             viewer.webRtcEndpoint.release();
         delete viewers[id];
     }
 }
-
 //Classes:
-
-
-
-class RpcResponse {
-
-    constructor(public status: string, public message, public data?) {
+var RpcResponse = (function () {
+    function RpcResponse(status, message, data) {
+        this.status = status;
+        this.message = message;
+        this.data = data;
         this.status = status;
         this.message = message;
         this.data = data;
     }
-}
-
-class RpcSuccessResponse extends RpcResponse {
-    constructor(message, data) {
-        super(RpcResponseStatus[RpcResponseStatus.Success], message, data);
+    return RpcResponse;
+})();
+var RpcSuccessResponse = (function (_super) {
+    __extends(RpcSuccessResponse, _super);
+    function RpcSuccessResponse(message, data) {
+        _super.call(this, RpcResponseStatus[RpcResponseStatus.Success], message, data);
     }
-}
-
-class RpcErrorResponse extends RpcResponse {
-    constructor(message, data) {
-        super(RpcResponseStatus[RpcResponseStatus.Error], message, data);
+    return RpcSuccessResponse;
+})(RpcResponse);
+var RpcErrorResponse = (function (_super) {
+    __extends(RpcErrorResponse, _super);
+    function RpcErrorResponse(message, data) {
+        _super.call(this, RpcResponseStatus[RpcResponseStatus.Error], message, data);
     }
-}
-
-
-enum RpcResponseStatus {
-    Success,
-    Error
-}
-
+    return RpcErrorResponse;
+})(RpcResponse);
+var RpcResponseStatus;
+(function (RpcResponseStatus) {
+    RpcResponseStatus[RpcResponseStatus["Success"] = 0] = "Success";
+    RpcResponseStatus[RpcResponseStatus["Error"] = 1] = "Error";
+})(RpcResponseStatus || (RpcResponseStatus = {}));
 app.use(express.static(path.join(__dirname, 'static')));
+//# sourceMappingURL=server.js.map

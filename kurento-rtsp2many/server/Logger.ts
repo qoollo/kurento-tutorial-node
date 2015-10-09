@@ -4,7 +4,7 @@ import fs = require('fs');
 import winston = require('winston');
 
 var appDir = path.dirname(require.main.filename),
-    logsDir = path.join(appDir, 'logs');
+    logsDir = path.join(appDir, '..', 'logs');
 
 if (!fs.existsSync(logsDir))
     fs.mkdirSync(logsDir);

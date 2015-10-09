@@ -6,6 +6,7 @@
     "postinstall": "cd static && bower install"
   },
   "dependencies": {
+    "autobahn": "^0.9.6",
     "express": "^4.12.4",
     "kurento-client": "5.1.0",
     "kurento-utils": "5.1.0",

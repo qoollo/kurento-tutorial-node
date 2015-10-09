@@ -1,7 +1,7 @@
 var path = require('path');
 var fs = require('fs');
 var winston = require('winston');
-var appDir = path.dirname(require.main.filename), logsDir = path.join(appDir, 'logs');
+var appDir = path.dirname(require.main.filename), logsDir = path.join(appDir, '..', 'logs');
 if (!fs.existsSync(logsDir))
     fs.mkdirSync(logsDir);
 winston.add(winston.transports.DailyRotateFile, {

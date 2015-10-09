@@ -1,0 +1,73 @@
+{
+    "controller": {
+    },
+    "workers": [
+        {
+            "type": "router",
+            "realms": [
+                {
+                    "name": "AquaMedKurentoInteraction",
+                    "roles": [
+                        {
+                            "name": "KurentoHub",
+                            "permissions": [
+                                {
+                                    "uri": "*",
+                                    "publish": true,
+                                    "subscribe": true,
+                                    "call": true,
+                                    "register": true
+                                }
+                            ]
+                        },
+                        {
+                            "name": "VideoConsumer",
+                            "permissions": [
+                                {
+                                    "uri": "*",
+                                    "publish": true,
+                                    "subscribe": true,
+                                    "call": true,
+                                    "register": true
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "transports": [
+                {
+                    "type": "web",
+                    "endpoint": {
+                        "type": "tcp",
+                        "port": 8080
+                    },
+                    "paths": {
+                        "/": {
+                            "type": "static",
+                            "directory": "../web"
+                        },
+                        "ws": {
+                            "type": "websocket"
+                        },
+                        "kurentoHub": {
+                            "type": "websocket"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "guest",
+            "executable": "node",
+            "arguments": [ "server.js" ],
+            "options": {
+                "workdir": "../server",
+                "watch": {
+                    "directories": [ "../server" ],
+                    "action": "restart"
+                }
+            }
+        }
+    ]
+}

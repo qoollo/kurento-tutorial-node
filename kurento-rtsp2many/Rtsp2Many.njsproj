@@ -6,7 +6,7 @@
     <ProjectGuid>{468c654d-2759-4545-af86-3b741183ca8e}</ProjectGuid>
     <ProjectHome />
     <ProjectView>ShowAllFiles</ProjectView>
-    <StartupFile>server.ts</StartupFile>
+    <StartupFile>server\server.ts</StartupFile>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{3AF33F2E-1136-4D97-BBB7-1795711AC8B8};{349c5851-65df-11da-9384-00065b846f21};{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}</ProjectTypeGuids>
@@ -20,9 +20,11 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <ItemGroup>
+    <Content Include=".crossbar\config.json" />
     <Content Include="package.json" />
     <Compile Include="gulpfile.js" />
-    <Compile Include="server.js" />
+    <Compile Include="server\server.js" />
+    <Content Include="README.md" />
     <Content Include="static\index.html" />
     <Content Include="static\bower.json" />
     <Content Include="static\css\kurento.css" />
@@ -181,6 +183,7 @@
     <Compile Include="static\bower_components\kurento-utils\js\kurento-utils.min.js" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include=".crossbar\" />
     <Folder Include="server\" />
     <Folder Include="typings\" />
     <Folder Include="static" />
@@ -230,21 +233,29 @@
     <Folder Include="typings\express\" />
     <Folder Include="typings\mime\" />
     <Folder Include="typings\minimist\" />
+    <Folder Include="typings\autobahn\" />
+    <Folder Include="typings\jquery\" />
+    <Folder Include="typings\when\" />
     <Folder Include="typings\ws\" />
     <Folder Include="typings\serve-static\" />
     <Folder Include="typings\node\" />
     <Folder Include="typings\winston\" />
   </ItemGroup>
   <ItemGroup>
-    <TypeScriptCompile Include="server.ts" />
+    <TypeScriptCompile Include="server\AppConfig.ts" />
+    <TypeScriptCompile Include="server\CrossbarConfig.ts" />
+    <TypeScriptCompile Include="server\server.ts" />
     <TypeScriptCompile Include="server\IdCounter.ts" />
     <TypeScriptCompile Include="server\KurentoClientManager.ts" />
     <TypeScriptCompile Include="server\Logger.ts" />
     <TypeScriptCompile Include="server\Master.ts" />
     <TypeScriptCompile Include="server\MasterManager.ts" />
     <TypeScriptCompile Include="server\ViewerManager.ts" />
+    <TypeScriptCompile Include="server\KurentoHubServer.ts" />
+    <TypeScriptCompile Include="typings\autobahn\autobahn.d.ts" />
     <TypeScriptCompile Include="typings\es6-promise.d.ts" />
     <TypeScriptCompile Include="typings\express\express.d.ts" />
+    <TypeScriptCompile Include="typings\jquery\jquery.d.ts" />
     <TypeScriptCompile Include="typings\kurento-client.d.ts" />
     <TypeScriptCompile Include="typings\kurento-utils.d.ts" />
     <TypeScriptCompile Include="typings\mime\mime.d.ts" />
@@ -252,6 +263,7 @@
     <TypeScriptCompile Include="typings\node\node.d.ts" />
     <TypeScriptCompile Include="typings\serve-static\serve-static.d.ts" />
     <TypeScriptCompile Include="typings\webrtc-adapter.d.ts" />
+    <TypeScriptCompile Include="typings\when\when.d.ts" />
     <TypeScriptCompile Include="typings\winston\winston.d.ts" />
     <TypeScriptCompile Include="typings\ws\ws.d.ts" />
   </ItemGroup>
