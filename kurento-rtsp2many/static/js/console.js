@@ -89,3 +89,5 @@ function Console(id, console) {
 		// this._append(createMessage(msg, "#0000FF"));
 	};
 }
+
+module.exports = Console;

@@ -13,14 +13,56 @@
  *
  */
 
+var Console = require('./console.js')
+var KurentoHubClient = require('./KurentoHubClient.js')
+
 var ws,
     video,
     webRtcPeer,
-    streamUrl = 'rtsp://10.5.5.85/media/video1';
+    streamUrl = 'rtsp://10.5.5.85/media/video1',
+    crossbarConfig = {
+        "type": "web",
+        "endpoint": {
+            "type": "tcp",
+            "port": 8080
+        },
+        "paths": {
+            "/": {
+                "type": "static",
+                "directory": "../web"
+            },
+            "ws": {
+                "type": "websocket"
+            },
+            "kurentoHub": {
+                "type": "websocket",
+                "auth": {
+                    "wampcra": {
+                        "type": "static",
+                        "users": {
+                            "KurentoHub": {
+                                "secret": "secret2",
+                                "role": "KurentoHub"
+                            },
+                            "VideoConsumer": {
+                                "secret": "prq7+YkJ1/KlW1X0YczMHw==",
+                                "role": "VideoConsumer",
+                                "salt": "salt123",
+                                "iterations": 100,
+                                "keylen": 16
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
 
 window.onload = function() {
 	console = new Console('console', console);
-	video = document.getElementById('video');
+    video = document.getElementById('video');
+    
+    var client = new KurentoHubClient(crossbarConfig, address.substring(0, address.lastIndexOf(':')));
 
 	var address = document.getElementById('app-server-address').value;
 	ws = new WebSocket('ws://' + address + '/control');

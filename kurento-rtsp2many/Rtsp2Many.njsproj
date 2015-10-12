@@ -16,6 +16,8 @@
     <EnableTypeScript>true</EnableTypeScript>
     <TypeScriptSourceMap>true</TypeScriptSourceMap>
     <TypeScriptModuleKind>CommonJS</TypeScriptModuleKind>
+    <StartWebBrowser>True</StartWebBrowser>
+    <LaunchUrl>http://localhost:8080</LaunchUrl>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
@@ -185,6 +187,8 @@
   <ItemGroup>
     <Folder Include=".crossbar\" />
     <Folder Include="server\" />
+    <Folder Include="server\Wamp\" />
+    <Folder Include="server\Wamp\Transport\" />
     <Folder Include="typings\" />
     <Folder Include="static" />
     <Folder Include="static\bower_components" />
@@ -235,6 +239,7 @@
     <Folder Include="typings\minimist\" />
     <Folder Include="typings\autobahn\" />
     <Folder Include="typings\jquery\" />
+    <Folder Include="typings\crossbar\" />
     <Folder Include="typings\when\" />
     <Folder Include="typings\ws\" />
     <Folder Include="typings\serve-static\" />
@@ -255,8 +260,15 @@
     <TypeScriptCompile Include="server\WampCraSaltedCredentials.ts" />
     <TypeScriptCompile Include="server\WampCraCredentials.ts" />
     <TypeScriptCompile Include="server\WampCredentials.ts" />
+    <TypeScriptCompile Include="server\WampRouterConnectionManager.ts" />
+    <TypeScriptCompile Include="server\Wamp\Transport\WampEndpointPath.ts" />
+    <TypeScriptCompile Include="server\Wamp\Transport\WampListeningEndpoint.ts" />
+    <TypeScriptCompile Include="server\Wamp\Transport\WampStaticEndpointPath.ts" />
+    <TypeScriptCompile Include="server\Wamp\Transport\WampWebSocketEndpointPath.ts" />
+    <TypeScriptCompile Include="server\Wamp\Transport\WampWebTransportConfiguration.ts" />
     <TypeScriptCompile Include="static\js\KurentoHubClient.ts" />
     <TypeScriptCompile Include="typings\autobahn\autobahn.d.ts" />
+    <TypeScriptCompile Include="typings\crossbar\crossbar.d.ts" />
     <TypeScriptCompile Include="typings\es6-promise.d.ts" />
     <TypeScriptCompile Include="typings\express\express.d.ts" />
     <TypeScriptCompile Include="typings\jquery\jquery.d.ts" />
@@ -327,4 +339,9 @@
       </FlavorProperties>
     </VisualStudio>
   </ProjectExtensions>
+  <PropertyGroup>
+    <PostBuildEvent>
+      gulp client
+    </PostBuildEvent>
+  </PropertyGroup>
 </Project>

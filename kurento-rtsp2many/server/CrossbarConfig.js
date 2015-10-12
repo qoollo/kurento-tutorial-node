@@ -1,6 +1,7 @@
 var fs = require('fs');
 var path = require('path');
 var logger = require('./Logger');
+var WampWebTransportConfiguration = require('./Wamp/Transport/WampWebTransportConfiguration');
 var CrossbarConfig = (function () {
     function CrossbarConfig() {
     }
@@ -18,6 +19,13 @@ var CrossbarConfig = (function () {
     CrossbarConfig.prototype.readSync = function () {
         var path = this.getConfigFilePath(), content = fs.readFileSync(path, 'utf8'), json = this.parseConfigFile(content);
         return json;
+    };
+    CrossbarConfig.prototype.getKurentoHubUrl = function () {
+        return this.read()
+            .then(function (cfg) {
+            var config = new WampWebTransportConfiguration(cfg.workers[0].transports[0]);
+            return config.getUrl('127.0.0.1', 'kurentoHub');
+        });
     };
     CrossbarConfig.prototype.getConfigFilePath = function () {
         var appRoot = path.dirname(require.main.filename), configPath = path.join(appRoot, '..', '.crossbar', 'config.json');

@@ -2,10 +2,11 @@
 import fs = require('fs');
 import path = require('path');
 import logger = require('./Logger');
+import WampWebTransportConfiguration = require('./Wamp/Transport/WampWebTransportConfiguration');
 
 class CrossbarConfig {
 
-    public read(): Promise<ICrossbarConfig> {
+    public read(): Promise<crossbar.config.ICrossbarConfig> {
         return new Promise((resolve, reject) => {
             var path = this.getConfigFilePath();
             fs.readFile(path, 'utf8', (err, content) => {
@@ -16,11 +17,19 @@ class CrossbarConfig {
         }); 
     }
 
-    public readSync(): ICrossbarConfig {
+    public readSync(): crossbar.config.ICrossbarConfig {
         var path = this.getConfigFilePath(),
             content = fs.readFileSync(path, 'utf8'),
             json = this.parseConfigFile(content);
         return json;
+    }
+
+    public getKurentoHubUrl(): Promise<string> {
+        return this.read()
+            .then(cfg => {
+                var config = new WampWebTransportConfiguration(<crossbar.config.IWebTransport>(<crossbar.config.ICrossbarRouter>cfg.workers[0]).transports[0]);
+                return config.getUrl('127.0.0.1', 'kurentoHub');
+            });
     }
 
     private getConfigFilePath(): string {
@@ -34,7 +43,7 @@ class CrossbarConfig {
         return configPath;
     }
 
-    private parseConfigFile(content: string): ICrossbarConfig {
+    private parseConfigFile(content: string): crossbar.config.ICrossbarConfig {
         try {
             return JSON.parse(content);
         } catch (e) {
@@ -44,99 +53,6 @@ class CrossbarConfig {
     }
 }
 
-interface ICrossbarConfig {
-    controller: {
-    };
-    workers: ICrossbarWorker[];
-}
 
-interface ICrossbarWorker {
-    id?: string;
-    type: string;
-}
-
-/** http://crossbar.io/docs/Router-Configuration/ */
-interface ICrossbarRouter extends ICrossbarWorker {
-    options?: IRouterOrContainerOptions;
-    manhole?;
-    realms: IRouterRealm[];
-    transports: IRouterTransport[];
-    components?;
-    connections?;
-}
-
-/** http://crossbar.io/docs/Container-Configuration/ */
-interface ICrossbarContainer extends ICrossbarWorker {
-    options?: IRouterOrContainerOptions;
-    manhole?;
-    components?;
-    connections?;
-}
-
-/** http://crossbar.io/docs/Guest-Configuration/ */
-interface ICrossbarGuest extends ICrossbarWorker {
-    executable: string;
-    arguments?: string[];
-    options?: IGuestOptions;
-}
-
-/** http://crossbar.io/docs/Native-Worker-Options/ */
-interface IWorkerOptions {
-    
-    env?: ICrossbarProcessEnvironment;
-}
-
-interface IRouterOrContainerOptions extends IWorkerOptions {
-    title?: string;
-    python?: string;
-    pythonpath?: string[];
-    cpu_affinity?: number[];
-    reactor?: string;
-}
-
-/** http://crossbar.io/docs/Guest-Configuration/ */
-interface IGuestOptions extends IWorkerOptions {
-    env?: ICrossbarProcessEnvironment;
-    workdir?: string;
-    stdin?: Object;
-    stdout?: string;
-    stderr?: string;
-    watch?: Object
-}
-
-/** http://crossbar.io/docs/Process-Environments/ */
-interface ICrossbarProcessEnvironment {
-    inherit?: boolean;
-    vars?: Object;
-}
-
-interface IRouterRealm {
-    //  TODO
-}
-
-/** http://crossbar.io/docs/Router-Transports/ */
-interface IRouterTransport {
-}
-
-interface IWebSocketTransport extends IRouterTransport {
-    //  TODO
-}
-
-interface IRawSocketTransport extends IRouterTransport {
-    //  TODO
-}
-
-/** http://crossbar.io/docs/Web-Transport-and-Services/ */
-interface IWebTransport extends IRouterTransport {
-    id?: number;
-    type: string;
-    endpoint: ITransportEndpoint;
-    paths: Object;
-    options?: Object;
-}
-
-/** http://crossbar.io/docs/Transport-Endpoints/ */
-interface ITransportEndpoint {
-}
 
 export = CrossbarConfig;
