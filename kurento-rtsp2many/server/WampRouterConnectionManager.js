@@ -1,19 +1,19 @@
-var logger = require('./Logger');
 var autobahn = require('autobahn');
 var WampRouterConnectionManager = (function () {
-    function WampRouterConnectionManager(url, realm, credentials) {
+    function WampRouterConnectionManager(url, realm, credentials, logger) {
         this.connection = null;
         this.session = null;
         this.url = url;
         this.realm = realm;
         this.credentials = credentials;
+        this.logger = logger;
         this.connectionState = ConnectionState.NotCreated;
     }
     WampRouterConnectionManager.prototype.start = function () {
         var _this = this;
         if (this.connectionState === ConnectionState.Connecting || this.connectionState === ConnectionState.Connected) {
             var err = 'WampRouterConnectionManager.start() cannot be called while WampRouterConnectionManager is started.';
-            logger.error(err);
+            this.logger.error(err);
             throw new Error(err);
         }
         return this.createConnection()
@@ -26,7 +26,7 @@ var WampRouterConnectionManager = (function () {
         var _this = this;
         if (this.connectionState !== ConnectionState.Connected) {
             var err = 'WampRouterConnectionManager.stop() cannot be called while WampRouterConnectionManager is not connected.';
-            logger.error(err);
+            this.logger.error(err);
             throw new Error(err);
         }
         return new Promise(function (resolve, reject) {
@@ -39,12 +39,12 @@ var WampRouterConnectionManager = (function () {
         });
     };
     WampRouterConnectionManager.prototype.onConnectionOpened = function (session, details) {
-        logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
+        this.logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
         this.session = session;
         this.connectionState = ConnectionState.Connected;
     };
     WampRouterConnectionManager.prototype.onConnectionClosed = function (reason, details) {
-        logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
+        this.logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
         this.connectionState = ConnectionState.Disconnected;
         this.connection = null;
         this.session = null;
@@ -79,4 +79,5 @@ var ConnectionState;
     ConnectionState[ConnectionState["Disconnected"] = 3] = "Disconnected";
 })(ConnectionState || (ConnectionState = {}));
 module.exports = WampRouterConnectionManager;
+
 //# sourceMappingURL=WampRouterConnectionManager.js.map

@@ -13,4 +13,5 @@ var WampStaticEndpointPath = (function (_super) {
     return WampStaticEndpointPath;
 })(WampEndpointPath);
 module.exports = WampStaticEndpointPath;
+
 //# sourceMappingURL=WampStaticEndpointPath.js.map

@@ -19,9 +19,11 @@ var WampCraSaltedCredentials = (function (_super) {
         this.keylen = keylen;
     }
     WampCraSaltedCredentials.prototype.onChallengeConcrete = function (extra) {
-        return autobahn.auth_cra.derive_key(this.secret, this.salt, this.iterations, this.keylen);
+        var key = autobahn.auth_cra.derive_key(this.secret, this.salt, this.iterations, this.keylen);
+        return autobahn.auth_cra.sign(key, extra.challenge);
     };
     return WampCraSaltedCredentials;
 })(WampCredentials);
 module.exports = WampCraSaltedCredentials;
+
 //# sourceMappingURL=WampCraSaltedCredentials.js.map

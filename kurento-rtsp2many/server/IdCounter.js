@@ -21,4 +21,5 @@ var IdCounter = (function () {
     return IdCounter;
 })();
 module.exports = IdCounter;
+
 //# sourceMappingURL=IdCounter.js.map

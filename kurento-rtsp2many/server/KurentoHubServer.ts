@@ -18,7 +18,7 @@ class KurentoHubServer {
     start(): Promise<void> {
         return new CrossbarConfig()
             .getKurentoHubUrl()
-            .then(url => this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', new WampCraCredentials('KurentoHub', 'secret2')))
+            .then(url => this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', new WampCraCredentials('KurentoHub', 'secret2'), logger))
             .then(m => m.start())
             .then(s => this.registerRpcs(s))
             .then(registrations => {

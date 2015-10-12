@@ -1,7 +1,5 @@
 ﻿
-import logger = require('./Logger');
 import autobahn = require('autobahn');
-import CrossbarConfig = require('./CrossbarConfig');
 import WampCredentials = require('./WampCredentials');
 import WampCraCredentials = require('./WampCraCredentials');
 
@@ -10,22 +8,27 @@ class WampRouterConnectionManager {
     private url: string;
     private realm: string;
     private credentials: WampCredentials;
+    
+    private logger;
 
     private connectionState: ConnectionState;
     private connection: autobahn.Connection = null;
     private session: autobahn.Session = null;
 
-    constructor(url: string, realm: string, credentials: WampCredentials) {
+    constructor(url: string, realm: string, credentials: WampCredentials, logger) {
         this.url = url;
         this.realm = realm;
         this.credentials = credentials;
+        
+        this.logger = logger;
+        
         this.connectionState = ConnectionState.NotCreated;
     }
 
     start(): Promise<autobahn.Session> {
         if (this.connectionState === ConnectionState.Connecting || this.connectionState === ConnectionState.Connected) {
             var err = 'WampRouterConnectionManager.start() cannot be called while WampRouterConnectionManager is started.';
-            logger.error(err);
+            this.logger.error(err);
             throw new Error(err);
         }
 
@@ -39,7 +42,7 @@ class WampRouterConnectionManager {
     stop(): Promise<void> {
         if (this.connectionState !== ConnectionState.Connected) {
             var err = 'WampRouterConnectionManager.stop() cannot be called while WampRouterConnectionManager is not connected.';
-            logger.error(err);
+            this.logger.error(err);
             throw new Error(err);
         }
 
@@ -54,13 +57,13 @@ class WampRouterConnectionManager {
     }
 
     private onConnectionOpened(session: autobahn.Session, details: any): void {
-        logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
+        this.logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
         this.session = session;
         this.connectionState = ConnectionState.Connected;
     }
 
     private onConnectionClosed(reason: string, details: any): boolean {
-        logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
+        this.logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
         this.connectionState = ConnectionState.Disconnected;
         this.connection = null;
         this.session = null;

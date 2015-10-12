@@ -1,6 +1,4 @@
 ﻿
-import logger = require('./Logger');
-
 /**
  *  Base class for WAMP credentials used to authenticate 
  *  WAMP node on WAMP Router.
@@ -30,8 +28,7 @@ abstract class WampCredentials {
                 return this.onChallengeConcrete(extra);
             }
         } catch (e) {
-            logger.error('Failed to process WAMP Auth challenge.', e.message);
-            throw e;
+            throw new Error('Failed to process WAMP Auth challenge. ' + e.message);
         }
     }
 

@@ -3,7 +3,7 @@
   "version": "5.1.1-dev",
   "private": true,
   "scripts": {
-    "postinstall": "cd static && bower install"
+    "postinstall": "cd web && bower install"
   },
   "dependencies": {
     "autobahn": "^0.9.6",

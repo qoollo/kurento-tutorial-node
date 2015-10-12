@@ -1,4 +1,4 @@
-﻿/*
+﻿/* 
  * (C) Copyright 2014 Kurento (http://kurento.org/)
  *
  * All rights reserved. This program and the accompanying materials

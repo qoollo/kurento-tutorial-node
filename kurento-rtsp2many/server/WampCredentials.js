@@ -1,4 +1,3 @@
-var logger = require('./Logger');
 /**
  *  Base class for WAMP credentials used to authenticate
  *  WAMP node on WAMP Router.
@@ -23,11 +22,11 @@ var WampCredentials = (function () {
             }
         }
         catch (e) {
-            logger.error('Failed to process WAMP Auth challenge.', e.message);
-            throw e;
+            throw new Error('Failed to process WAMP Auth challenge. ' + e.message);
         }
     };
     return WampCredentials;
 })();
 module.exports = WampCredentials;
+
 //# sourceMappingURL=WampCredentials.js.map

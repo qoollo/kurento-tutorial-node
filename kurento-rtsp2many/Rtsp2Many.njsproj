@@ -22,6 +22,10 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <ItemGroup>
+    <Compile Include="web\index.js" />
+    <Compile Include="web\js\console.js" />
+    <Compile Include="web\js\index.js" />
+    <Compile Include="web\js\KurentoHubClient.js" />
     <Content Include=".crossbar\config.json" />
     <Content Include="package.json" />
     <Compile Include="gulpfile.js" />
@@ -183,6 +187,17 @@
     <Compile Include="static\bower_components\jquery\src\traversing\var\rneedsContext.js" />
     <Compile Include="static\bower_components\kurento-utils\js\kurento-utils.js" />
     <Compile Include="static\bower_components\kurento-utils\js\kurento-utils.min.js" />
+    <Content Include="web\bower.json" />
+    <Content Include="web\css\kurento.css" />
+    <Content Include="web\img\kurento.png" />
+    <Content Include="web\img\naevatec.png" />
+    <Content Include="web\img\pipeline.png" />
+    <Content Include="web\img\spinner.gif" />
+    <Content Include="web\img\transparent-1px.png" />
+    <Content Include="web\img\urjc.gif" />
+    <Content Include="web\img\webrtc.png" />
+    <Content Include="web\index.html" />
+    <Content Include="web\js\KurentoHubClient.js.map" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include=".crossbar\" />
@@ -193,7 +208,6 @@
     <Folder Include="static" />
     <Folder Include="static\bower_components" />
     <Folder Include="static\bower_components\adapter.js" />
-    <Folder Include="static\bower_components\adapter.js\test" />
     <Folder Include="static\bower_components\bootstrap" />
     <Folder Include="static\bower_components\bootstrap\dist" />
     <Folder Include="static\bower_components\bootstrap\dist\css" />
@@ -245,6 +259,10 @@
     <Folder Include="typings\serve-static\" />
     <Folder Include="typings\node\" />
     <Folder Include="typings\winston\" />
+    <Folder Include="web\" />
+    <Folder Include="web\css\" />
+    <Folder Include="web\img\" />
+    <Folder Include="web\js\" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="server\AppConfig.ts" />
@@ -282,6 +300,7 @@
     <TypeScriptCompile Include="typings\when\when.d.ts" />
     <TypeScriptCompile Include="typings\winston\winston.d.ts" />
     <TypeScriptCompile Include="typings\ws\ws.d.ts" />
+    <TypeScriptCompile Include="web\js\KurentoHubClient.ts" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!--Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them.-->

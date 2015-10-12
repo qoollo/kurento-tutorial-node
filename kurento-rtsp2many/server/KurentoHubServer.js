@@ -9,7 +9,7 @@ var KurentoHubServer = (function () {
         var _this = this;
         return new CrossbarConfig()
             .getKurentoHubUrl()
-            .then(function (url) { return _this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', new WampCraCredentials('KurentoHub', 'secret2')); })
+            .then(function (url) { return _this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', new WampCraCredentials('KurentoHub', 'secret2'), logger); })
             .then(function (m) { return m.start(); })
             .then(function (s) { return _this.registerRpcs(s); })
             .then(function (registrations) {
@@ -39,4 +39,5 @@ var KurentoHubServer = (function () {
     return KurentoHubServer;
 })();
 module.exports = KurentoHubServer;
+
 //# sourceMappingURL=KurentoHubServer.js.map

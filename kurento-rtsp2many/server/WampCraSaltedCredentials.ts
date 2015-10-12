@@ -22,7 +22,8 @@ class WampCraSaltedCredentials extends WampCredentials {
     private keylen: number;
 
     protected onChallengeConcrete(extra: any): autobahn.OnChallengeHandler {
-        return <any>autobahn.auth_cra.derive_key(this.secret, this.salt, this.iterations, this.keylen);
+        var key = autobahn.auth_cra.derive_key(this.secret, this.salt, this.iterations, this.keylen);
+        return <any>autobahn.auth_cra.sign(key, extra.challenge);
     }
 }
 

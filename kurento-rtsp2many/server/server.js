@@ -206,4 +206,5 @@ var RpcResponseStatus;
     RpcResponseStatus[RpcResponseStatus["Error"] = 1] = "Error";
 })(RpcResponseStatus || (RpcResponseStatus = {}));
 app.use(express.static(path.join(__dirname, 'static')));
+
 //# sourceMappingURL=server.js.map
