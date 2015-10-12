@@ -5,6 +5,7 @@ import logger = require('./Logger');
 import autobahn = require('autobahn');
 import when = require('when');
 import CrossbarConfig = require('./CrossbarConfig');
+import WampCraCredentials = require('./WampCraCredentials');
 
 
 class KurentoHubServer {
@@ -40,9 +41,11 @@ class KurentoHubServer {
         return res;
     }
 
-    register(): number {
-        return 1;
+    register(): Promise<number> {
+        return Promise.resolve(1);
     }
+
+    //connectToStream(streamUrl: string, sdpOffer: string)
 }
 
 class WampRouterConnectionManager {
@@ -104,26 +107,15 @@ class WampRouterConnectionManager {
         return new CrossbarConfig().read().then(cfg => {
             var port = '8080',  //  TODO extract port from cfg
                 path = 'kurentoHub', //  TODO extract path from cfg
-                connection = new autobahn.Connection({
+                credentials = new WampCraCredentials('KurentoHub', 'secret2'),
+                connectionOptions: autobahn.IConnectionOptions = credentials.setupAuth({
                     url: 'ws://127.0.0.1:' + port + '/' + path,
-                    realm: 'AquaMedKurentoInteraction', 
-                    authmethods: ["wampcra"],
-                    authid: 'KurentoHub',
-                    onchallenge: (session, method, extra) => this.onChallenge(session, method, extra)                    
-                });
+                    realm: 'AquaMedKurentoInteraction',
+                }),
+                connection = new autobahn.Connection(connectionOptions);
 
             return connection;
         });
-    }
-
-    private onChallenge(session: autobahn.Session, method: string, extra: any): autobahn.OnChallengeHandler {
-        if (method === "wampcra") {
-            return <any>autobahn.auth_cra.sign('secret2', extra.challenge);
-            //return (session, method, extra) => {
-            //    debugger;
-            //    return when.resolve(autobahn.auth_cra.sign('secret2', extra.challenge));
-            //}           
-        }
     }
 
     private openConnection(connection: autobahn.Connection): Promise<autobahn.Session> {

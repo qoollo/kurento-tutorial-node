@@ -252,6 +252,10 @@
     <TypeScriptCompile Include="server\MasterManager.ts" />
     <TypeScriptCompile Include="server\ViewerManager.ts" />
     <TypeScriptCompile Include="server\KurentoHubServer.ts" />
+    <TypeScriptCompile Include="server\WampCraSaltedCredentials.ts" />
+    <TypeScriptCompile Include="server\WampCraCredentials.ts" />
+    <TypeScriptCompile Include="server\WampCredentials.ts" />
+    <TypeScriptCompile Include="static\js\KurentoHubClient.ts" />
     <TypeScriptCompile Include="typings\autobahn\autobahn.d.ts" />
     <TypeScriptCompile Include="typings\es6-promise.d.ts" />
     <TypeScriptCompile Include="typings\express\express.d.ts" />
