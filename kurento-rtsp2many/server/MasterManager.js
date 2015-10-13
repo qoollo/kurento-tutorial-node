@@ -25,5 +25,4 @@ var MasterManager = (function () {
     return MasterManager;
 })();
 module.exports = MasterManager;
-
 //# sourceMappingURL=MasterManager.js.map

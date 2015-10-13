@@ -28,5 +28,4 @@ var WampListeningEndpoint = (function () {
     return WampListeningEndpoint;
 })();
 module.exports = WampListeningEndpoint;
-
 //# sourceMappingURL=WampListeningEndpoint.js.map

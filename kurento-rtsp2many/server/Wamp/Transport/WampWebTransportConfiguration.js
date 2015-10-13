@@ -36,5 +36,4 @@ var WampWebTransportConfiguration = (function () {
     return WampWebTransportConfiguration;
 })();
 module.exports = WampWebTransportConfiguration;
-
 //# sourceMappingURL=WampWebTransportConfiguration.js.map

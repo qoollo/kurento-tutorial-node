@@ -61,8 +61,11 @@
                                             "role": "KurentoHub"
                                         },
                                         "VideoConsumer": {
-                                            "secret": "secret1",
-                                            "role": "VideoConsumer"
+                                            "secret": "prq7+YkJ1/KlW1X0YczMHw==",
+                                            "role": "VideoConsumer",
+                                            "salt": "salt123",
+                                            "iterations": 100,
+                                            "keylen": 16
                                         }
                                     }
                                 }

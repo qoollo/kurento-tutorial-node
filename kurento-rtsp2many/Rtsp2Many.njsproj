@@ -106,6 +106,8 @@
     <TypeScriptCompile Include="typings\when\when.d.ts" />
     <TypeScriptCompile Include="typings\winston\winston.d.ts" />
     <TypeScriptCompile Include="typings\ws\ws.d.ts" />
+    <TypeScriptCompile Include="web\js\Console.ts" />
+    <TypeScriptCompile Include="web\js\index.ts" />
     <TypeScriptCompile Include="web\js\KurentoHubClient.ts" />
     <TypeScriptCompile Include="web\js\KurentoPlayer.ts" />
     <TypeScriptCompile Include="web\js\KurentoVideoConsumer.ts" />

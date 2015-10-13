@@ -6,5 +6,4 @@ var EnvMode = exports.EnvMode;
 exports.config = {
     mode: EnvMode.Development,
 };
-
 //# sourceMappingURL=AppConfig.js.map

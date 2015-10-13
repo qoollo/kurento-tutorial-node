@@ -25,5 +25,4 @@ var WampCraSaltedCredentials = (function (_super) {
     return WampCraSaltedCredentials;
 })(WampCredentials);
 module.exports = WampCraSaltedCredentials;
-
 //# sourceMappingURL=WampCraSaltedCredentials.js.map

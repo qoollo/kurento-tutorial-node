@@ -83,5 +83,4 @@ var KurentoClientWrapper = (function () {
     return KurentoClientWrapper;
 })();
 module.exports = KurentoClientManager;
-
 //# sourceMappingURL=KurentoClientManager.js.map

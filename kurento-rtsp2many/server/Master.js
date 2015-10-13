@@ -180,5 +180,4 @@ var Master = (function () {
     return Master;
 })();
 module.exports = Master;
-
 //# sourceMappingURL=Master.js.map

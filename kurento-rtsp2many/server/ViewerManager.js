@@ -25,5 +25,4 @@ var ViewerManager = (function () {
     return ViewerManager;
 })();
 module.exports = ViewerManager;
-
 //# sourceMappingURL=ViewerManager.js.map

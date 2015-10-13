@@ -106,5 +106,4 @@ var WampRouterConnectionManager = (function () {
     return WampRouterConnectionManager;
 })();
 module.exports = WampRouterConnectionManager;
-
 //# sourceMappingURL=WampRouterConnectionManager.js.map

@@ -14,7 +14,7 @@ class KurentoHubClient {
     constructor(config: crossbar.config.IWebTransport, kurentoHubDomain: string, logger = console) {
         var transportConfig = new WampWebTransportConfiguration(config),
             url = transportConfig.getUrl(kurentoHubDomain, 'kurentoHub'),
-            credentials = new WampCraCredentials('VideoConsumer', 'secret1'); //new WampCraSaltedCredentials('VideoConsumer', 'secret1', 'salt123', 100, 16);
+            credentials = new WampCraSaltedCredentials('VideoConsumer', 'secret1', 'salt123', 100, 16);
         this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', credentials, logger);
         this.logger = logger;
     }

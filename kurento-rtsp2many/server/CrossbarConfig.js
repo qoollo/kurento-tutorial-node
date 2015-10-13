@@ -48,5 +48,4 @@ var CrossbarConfig = (function () {
     return CrossbarConfig;
 })();
 module.exports = CrossbarConfig;
-
 //# sourceMappingURL=CrossbarConfig.js.map
