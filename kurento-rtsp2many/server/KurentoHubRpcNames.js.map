@@ -1,0 +1,1 @@
+{"version":3,"sources":["server/KurentoHubRpcNames.ts"],"names":[],"mappings":"AACA,iBAAS;IACL,QAAQ,EAAE,yBAAyB;CACtC,CAAA","file":"server/KurentoHubRpcNames.js","sourcesContent":["\r\nexport = {\r\n    register: 'com.kurentoHub.register'\r\n}"],"sourceRoot":"/source/"}

@@ -51,7 +51,22 @@
                             "type": "websocket"
                         },
                         "kurentoHub": {
-                            "type": "websocket"
+                            "type": "websocket",
+                            "auth": {
+                                "wampcra": {
+                                    "type": "static",
+                                    "users": {
+                                        "KurentoHub": {
+                                            "secret": "secret2",
+                                            "role": "KurentoHub"
+                                        },
+                                        "VideoConsumer": {
+                                            "secret": "secret1",
+                                            "role": "VideoConsumer"
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -14300,6 +14300,25 @@ function ws(uri, protocols, opts) {
 if (WebSocket) ws.prototype = WebSocket.prototype;
 
 },{}],82:[function(require,module,exports){
+var ConnectionState;
+(function (ConnectionState) {
+    ConnectionState[ConnectionState["NotCreated"] = 0] = "NotCreated";
+    ConnectionState[ConnectionState["Connecting"] = 1] = "Connecting";
+    ConnectionState[ConnectionState["Connected"] = 2] = "Connected";
+    ConnectionState[ConnectionState["Disconnected"] = 3] = "Disconnected";
+})(ConnectionState || (ConnectionState = {}));
+module.exports = ConnectionState;
+
+//# sourceMappingURL=ConnectionState.js.map
+
+},{}],83:[function(require,module,exports){
+module.exports = {
+    register: 'com.kurentoHub.register'
+};
+
+//# sourceMappingURL=KurentoHubRpcNames.js.map
+
+},{}],84:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -14311,26 +14330,22 @@ var WampCredentials = require('./WampCredentials');
  * Represents credentials used to authenticate WAMP Node on WAMP Router
  * WAMP Challenge-Response Authentication method (WAMP-CRA).
  */
-var WampCraSaltedCredentials = (function (_super) {
-    __extends(WampCraSaltedCredentials, _super);
-    function WampCraSaltedCredentials(authId, secret, salt, iterations, keylen) {
+var WampCraCredentials = (function (_super) {
+    __extends(WampCraCredentials, _super);
+    function WampCraCredentials(authId, secret) {
         _super.call(this, 'wampcra', authId);
         this.secret = secret;
-        this.salt = salt;
-        this.iterations = iterations;
-        this.keylen = keylen;
     }
-    WampCraSaltedCredentials.prototype.onChallengeConcrete = function (extra) {
-        var key = autobahn.auth_cra.derive_key(this.secret, this.salt, this.iterations, this.keylen);
-        return autobahn.auth_cra.sign(key, extra.challenge);
+    WampCraCredentials.prototype.onChallengeConcrete = function (extra) {
+        return autobahn.auth_cra.sign(this.secret, extra.challenge);
     };
-    return WampCraSaltedCredentials;
+    return WampCraCredentials;
 })(WampCredentials);
-module.exports = WampCraSaltedCredentials;
+module.exports = WampCraCredentials;
 
-//# sourceMappingURL=WampCraSaltedCredentials.js.map
+//# sourceMappingURL=WampCraCredentials.js.map
 
-},{"./WampCredentials":83,"autobahn":1}],83:[function(require,module,exports){
+},{"./WampCredentials":85,"autobahn":1}],85:[function(require,module,exports){
 /**
  *  Base class for WAMP credentials used to authenticate
  *  WAMP node on WAMP Router.
@@ -14364,12 +14379,13 @@ module.exports = WampCredentials;
 
 //# sourceMappingURL=WampCredentials.js.map
 
-},{}],84:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 var autobahn = require('autobahn');
+var ConnectionState = require('./ConnectionState');
 var WampRouterConnectionManager = (function () {
     function WampRouterConnectionManager(url, realm, credentials, logger) {
         this.connection = null;
-        this.session = null;
+        this._session = null;
         this.url = url;
         this.realm = realm;
         this.credentials = credentials;
@@ -14387,6 +14403,12 @@ var WampRouterConnectionManager = (function () {
             .then(function (c) {
             _this.connection = c;
             return _this.openConnection(c);
+        })
+            .then(function (s) { return _this.subscribeSessionEvents(s); })
+            .catch(function (e) {
+            var msg = 'Failed to open WAMP Router connection: ' + (e.message || e);
+            _this.logger.error(msg);
+            return Promise.reject(msg);
         });
     };
     WampRouterConnectionManager.prototype.stop = function () {
@@ -14397,7 +14419,7 @@ var WampRouterConnectionManager = (function () {
             throw new Error(err);
         }
         return new Promise(function (resolve, reject) {
-            _this.connection.close('Deliberate closing', 'Close please');
+            _this.connection.close(WampRouterConnectionManager.closeReason, 'Close please');
             var original = _this.connection.onclose;
             _this.connection.onclose = function (r, d) {
                 resolve();
@@ -14405,17 +14427,31 @@ var WampRouterConnectionManager = (function () {
             };
         });
     };
+    Object.defineProperty(WampRouterConnectionManager.prototype, "state", {
+        get: function () {
+            return this.connectionState;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(WampRouterConnectionManager.prototype, "session", {
+        get: function () {
+            return this._session;
+        },
+        enumerable: true,
+        configurable: true
+    });
     WampRouterConnectionManager.prototype.onConnectionOpened = function (session, details) {
         this.logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
-        this.session = session;
+        this._session = session;
         this.connectionState = ConnectionState.Connected;
     };
     WampRouterConnectionManager.prototype.onConnectionClosed = function (reason, details) {
-        this.logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
+        this.logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this._session.id);
         this.connectionState = ConnectionState.Disconnected;
         this.connection = null;
-        this.session = null;
-        return false;
+        this._session = null;
+        return reason == WampRouterConnectionManager.closeReason;
     };
     WampRouterConnectionManager.prototype.createConnection = function () {
         var connectionOptions = this.credentials.setupAuth({
@@ -14436,20 +14472,26 @@ var WampRouterConnectionManager = (function () {
             _this.connectionState = ConnectionState.Connecting;
         });
     };
+    WampRouterConnectionManager.prototype.subscribeSessionEvents = function (session) {
+        var _this = this;
+        session.onjoin = function (f) { return _this.onNodeJoined(f); };
+        session.onleave = function (r, d) { return _this.onNodeLeft(r, d); };
+        return session;
+    };
+    WampRouterConnectionManager.prototype.onNodeJoined = function (roleFeatures) {
+        this.logger.info('WAMP Session event: join.', roleFeatures);
+    };
+    WampRouterConnectionManager.prototype.onNodeLeft = function (reason, details) {
+        this.logger.info('WAMP Session event: leave. Reason: ' + reason + '. Details: ', details);
+    };
+    WampRouterConnectionManager.closeReason = 'Deliberate closing';
     return WampRouterConnectionManager;
 })();
-var ConnectionState;
-(function (ConnectionState) {
-    ConnectionState[ConnectionState["NotCreated"] = 0] = "NotCreated";
-    ConnectionState[ConnectionState["Connecting"] = 1] = "Connecting";
-    ConnectionState[ConnectionState["Connected"] = 2] = "Connected";
-    ConnectionState[ConnectionState["Disconnected"] = 3] = "Disconnected";
-})(ConnectionState || (ConnectionState = {}));
 module.exports = WampRouterConnectionManager;
 
 //# sourceMappingURL=WampRouterConnectionManager.js.map
 
-},{"autobahn":1}],85:[function(require,module,exports){
+},{"./ConnectionState":82,"autobahn":1}],87:[function(require,module,exports){
 var WampEndpointPath = (function () {
     function WampEndpointPath(type, path) {
         this._type = type;
@@ -14475,7 +14517,7 @@ module.exports = WampEndpointPath;
 
 //# sourceMappingURL=WampEndpointPath.js.map
 
-},{}],86:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 var WampListeningEndpoint = (function () {
     function WampListeningEndpoint(port) {
         this.version = '4';
@@ -14509,7 +14551,7 @@ module.exports = WampListeningEndpoint;
 
 //# sourceMappingURL=WampListeningEndpoint.js.map
 
-},{}],87:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -14528,7 +14570,7 @@ module.exports = WampStaticEndpointPath;
 
 //# sourceMappingURL=WampStaticEndpointPath.js.map
 
-},{"./WampEndpointPath":85}],88:[function(require,module,exports){
+},{"./WampEndpointPath":87}],90:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -14546,7 +14588,7 @@ module.exports = WampWebSocketEndpointPath;
 
 //# sourceMappingURL=WampWebSocketEndpointPath.js.map
 
-},{"./WampEndpointPath":85}],89:[function(require,module,exports){
+},{"./WampEndpointPath":87}],91:[function(require,module,exports){
 var WampListeningEndpoint = require('./WampListeningEndpoint');
 var WampStaticEndpointPath = require('./WampStaticEndpointPath');
 var WampWebSocketEndpointPath = require('./WampWebSocketEndpointPath');
@@ -14588,24 +14630,49 @@ module.exports = WampWebTransportConfiguration;
 
 //# sourceMappingURL=WampWebTransportConfiguration.js.map
 
-},{"./WampListeningEndpoint":86,"./WampStaticEndpointPath":87,"./WampWebSocketEndpointPath":88}],90:[function(require,module,exports){
-var WampCraSaltedCredentials = require('../../server/WampCraSaltedCredentials');
+},{"./WampListeningEndpoint":88,"./WampStaticEndpointPath":89,"./WampWebSocketEndpointPath":90}],92:[function(require,module,exports){
+var KurentoHubRpcNames = require('../../server/KurentoHubRpcNames');
+var WampCraCredentials = require('../../server/WampCraCredentials');
 var WampRouterConnectionManager = require('../../server/WampRouterConnectionManager');
 var WampWebTransportConfiguration = require('../../server/Wamp/Transport/WampWebTransportConfiguration');
 var KurentoHubClient = (function () {
     function KurentoHubClient(config, kurentoHubDomain, logger) {
         if (logger === void 0) { logger = console; }
-        var transportConfig = new WampWebTransportConfiguration(config), url = transportConfig.getUrl(kurentoHubDomain, 'kurentoHub'), credentials = new WampCraSaltedCredentials('VideoConsumer', 'secret1', 'salt123', 100, 16);
+        var transportConfig = new WampWebTransportConfiguration(config), url = transportConfig.getUrl(kurentoHubDomain, 'kurentoHub'), credentials = new WampCraCredentials('VideoConsumer', 'secret1'); //new WampCraSaltedCredentials('VideoConsumer', 'secret1', 'salt123', 100, 16);
         this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', credentials, logger);
+        this.logger = logger;
     }
     KurentoHubClient.prototype.start = function () {
+        var _this = this;
         return this.connectionManager.start()
-            .then(function (s) {
-            debugger;
+            .then(function (s) { return _this.logger.info('Connection to KurentoHub established successfully. Session #' + s.id); })
+            .catch(function (err) {
+            var msg = 'Failed to establish connection with KurentoHub. ' + (err.message || err);
+            _this.logger.log(msg);
+            return Promise.reject(msg);
         });
     };
     KurentoHubClient.prototype.stop = function () {
         return this.connectionManager.stop();
+    };
+    Object.defineProperty(KurentoHubClient.prototype, "state", {
+        get: function () {
+            return this.connectionManager.state;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    KurentoHubClient.prototype.register = function () {
+        return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.register));
+    };
+    KurentoHubClient.prototype.handleRpcError = function (rpcPromise) {
+        var _this = this;
+        return rpcPromise
+            .catch(function (e) {
+            var err = 'Error calling RPC: ' + (e.error || '') + ' ' + (e.args && e.args[0]);
+            _this.logger.error(err);
+            return Promise.reject(err);
+        });
     };
     return KurentoHubClient;
 })();
@@ -14613,7 +14680,105 @@ module.exports = KurentoHubClient;
 
 //# sourceMappingURL=KurentoHubClient.js.map
 
-},{"../../server/Wamp/Transport/WampWebTransportConfiguration":89,"../../server/WampCraSaltedCredentials":82,"../../server/WampRouterConnectionManager":84}],91:[function(require,module,exports){
+},{"../../server/KurentoHubRpcNames":83,"../../server/Wamp/Transport/WampWebTransportConfiguration":91,"../../server/WampCraCredentials":84,"../../server/WampRouterConnectionManager":86}],93:[function(require,module,exports){
+var KurentoPlayer /*extends EventTarget*/ = (function () {
+    function KurentoPlayer /*extends EventTarget*/(streamUrl) {
+        //super();
+        this._streamUrl = streamUrl;
+    }
+    Object.defineProperty(KurentoPlayer /*extends EventTarget*/.prototype, "streamUrl", {
+        get: function () {
+            return this._streamUrl;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    KurentoPlayer /*extends EventTarget*/.prototype.play = function () {
+        return Promise.reject('Not implemented');
+    };
+    KurentoPlayer /*extends EventTarget*/.prototype.stop = function () {
+        return Promise.reject('Not implemented');
+    };
+    return KurentoPlayer /*extends EventTarget*/;
+})();
+module.exports = KurentoPlayer;
+
+//# sourceMappingURL=KurentoPlayer.js.map
+
+},{}],94:[function(require,module,exports){
+var ConnectionState = require('../../server/ConnectionState');
+var KurentoClientHub = require('./KurentoHubClient');
+var KurentoPlayer = require('./KurentoPlayer');
+var KurentoVideoConsumer = (function () {
+    function KurentoVideoConsumer(kurentoHubDomain, logger) {
+        if (logger === void 0) { logger = console; }
+        this.hub = null;
+        this.logger = logger;
+        this.hub = new KurentoClientHub(KurentoVideoConsumer.crossbarConfig, kurentoHubDomain, logger);
+    }
+    KurentoVideoConsumer.prototype.playStream = function (streamUrl) {
+        var _this = this;
+        var promise;
+        if (this.hub.state == ConnectionState.NotCreated) {
+            promise = this.hub.start();
+        }
+        else
+            promise = Promise.resolve();
+        return promise.then(function () {
+            _this.hub.register().then(function (r) {
+                debugger;
+                _this.logger.log('RPC "register" response: ' + r);
+            });
+            return new KurentoPlayer('');
+        });
+    };
+    KurentoVideoConsumer.prototype.dispose = function () {
+        this.hub.stop();
+    };
+    KurentoVideoConsumer.crossbarConfig = {
+        "type": "web",
+        "endpoint": {
+            "type": "tcp",
+            "port": 8080
+        },
+        "paths": {
+            "/": {
+                "type": "static",
+                "directory": "../web"
+            },
+            "ws": {
+                "type": "websocket"
+            },
+            "kurentoHub": {
+                "type": "websocket",
+                "auth": {
+                    "wampcra": {
+                        "type": "static",
+                        "users": {
+                            "KurentoHub": {
+                                "secret": "secret2",
+                                "role": "KurentoHub"
+                            },
+                            "VideoConsumer": {
+                                "secret": "prq7+YkJ1/KlW1X0YczMHw==",
+                                "role": "VideoConsumer",
+                                "salt": "salt123",
+                                "iterations": 100,
+                                "keylen": 16
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+    return KurentoVideoConsumer;
+})();
+module.exports = KurentoVideoConsumer;
+
+//# sourceMappingURL=KurentoVideoConsumer.js.map
+
+},{"../../server/ConnectionState":82,"./KurentoHubClient":92,"./KurentoPlayer":93}],95:[function(require,module,exports){
 /*
  * (C) Copyright 2013 Kurento (http://kurento.org/)
  *
@@ -14707,7 +14872,7 @@ function Console(id, console) {
 }
 
 module.exports = Console;
-},{}],92:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 /*
  * (C) Copyright 2014 Kurento (http://kurento.org/)
  *
@@ -14724,12 +14889,13 @@ module.exports = Console;
  */
 
 var Console = require('./console.js')
-var KurentoHubClient = require('./KurentoHubClient.js')
+var KurentoVideoConsumer = require('./KurentoVideoConsumer.js')
 
 var ws,
     video,
     webRtcPeer,
     streamUrl = 'rtsp://10.5.5.85/media/video1',
+    client,
     crossbarConfig = {
         "type": "web",
         "endpoint": {
@@ -14774,16 +14940,9 @@ window.onload = function() {
 	
 	var address = document.getElementById('app-server-address').value;
     
-    var client = new KurentoHubClient(crossbarConfig, address.substring(0, address.lastIndexOf(':')), console);
-	client.start()
-		.then(
-			function () {
-				debugger;
-			},
-			function (err) {
-				console.error('Failed to establish connection with KurentoHub.', err);
-			}
-		);
+    client = new KurentoVideoConsumer(address.substring(0, address.lastIndexOf(':')), console);
+    client.playStream();
+    return;
 
 	ws = new WebSocket('ws://' + address + '/control');
 	ws.onmessage = function (message) {
@@ -14817,6 +14976,8 @@ window.onload = function() {
 }
 
 window.onbeforeunload = function () {
+    if (client)
+        client.dispose();
     if (ws)
 	    ws.close();
 }
@@ -14919,4 +15080,4 @@ $(document).delegate('*[data-toggle="lightbox"]', 'click', function(event) {
 	$(this).ekkoLightbox();
 });
 
-},{"./KurentoHubClient.js":90,"./console.js":91}]},{},[92])
+},{"./KurentoVideoConsumer.js":94,"./console.js":95}]},{},[96])

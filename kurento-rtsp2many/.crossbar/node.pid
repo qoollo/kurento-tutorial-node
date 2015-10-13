@@ -1,9 +1,9 @@
 {
-   "pid": 9928, 
+   "pid": 8872, 
    "options": {
       "reactor": null, 
       "loglevel": "info", 
-      "logtofile": false, 
+      "logtofile": true, 
       "logformat": "colour", 
       "command": "start", 
       "logdir": null, 
@@ -14,6 +14,7 @@
       "C:\\Python27\\Scripts\\crossbar", 
       "start", 
       "--config", 
-      "config-dev.json"
+      "config-dev.json", 
+      "--logtofile"
    ]
 }

@@ -17,11 +17,11 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var path = require('path');
 var express = require('express');
 var ws = require('ws');
 var minimist = require('minimist');
 var url = require('url');
+var readline = require('readline');
 var KurentoClient = require('kurento-client');
 var kurentoUtils = require('kurento-utils');
 var logger = require('./Logger');
@@ -33,7 +33,7 @@ var IdCounter = require('./IdCounter');
 var KurentoClientManager = require('./KurentoClientManager');
 var argv = minimist(process.argv.slice(2), {
     default: {
-        as_uri: "http://localhost:8080/",
+        as_uri: "http://localhost:8081/",
         ws_uri: "ws://10.5.6.119:8888/kurento"
     }
 });
@@ -42,6 +42,26 @@ var app = express();
 var kurentoHubServer = new KurentoHubServer();
 kurentoHubServer.start().then(function () {
     debugger;
+});
+//  Windows handler for Ctrl + C
+if (process.platform == 'win32') {
+    var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    rl.on('SIGINT', function () { return process.emit('SIGINT'); });
+}
+//  Handler for Ctrl + C
+process.on('SIGINT', function () {
+    logger.info("Caught interrupt signal. Stopping KurentoHubServer...");
+    kurentoHubServer.stop()
+        .then(function () {
+        logger.info('KurentoHubServer stopped. Goodbye!');
+        process.exit();
+    }, function () {
+        logger.error('Failed to stop KurentoHubServer.');
+        process.exit(1);
+    });
 });
 /*
  * Definition of global variables.
@@ -205,6 +225,6 @@ var RpcResponseStatus;
     RpcResponseStatus[RpcResponseStatus["Success"] = 0] = "Success";
     RpcResponseStatus[RpcResponseStatus["Error"] = 1] = "Error";
 })(RpcResponseStatus || (RpcResponseStatus = {}));
-app.use(express.static(path.join(__dirname, 'static')));
+//app.use(express.static(path.join(__dirname, 'static')));
 
 //# sourceMappingURL=server.js.map

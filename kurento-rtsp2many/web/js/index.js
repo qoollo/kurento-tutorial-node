@@ -14,12 +14,13 @@
  */
 
 var Console = require('./console.js')
-var KurentoHubClient = require('./KurentoHubClient.js')
+var KurentoVideoConsumer = require('./KurentoVideoConsumer.js')
 
 var ws,
     video,
     webRtcPeer,
     streamUrl = 'rtsp://10.5.5.85/media/video1',
+    client,
     crossbarConfig = {
         "type": "web",
         "endpoint": {
@@ -64,16 +65,9 @@ window.onload = function() {
 	
 	var address = document.getElementById('app-server-address').value;
     
-    var client = new KurentoHubClient(crossbarConfig, address.substring(0, address.lastIndexOf(':')), console);
-	client.start()
-		.then(
-			function () {
-				debugger;
-			},
-			function (err) {
-				console.error('Failed to establish connection with KurentoHub.', err);
-			}
-		);
+    client = new KurentoVideoConsumer(address.substring(0, address.lastIndexOf(':')), console);
+    client.playStream();
+    return;
 
 	ws = new WebSocket('ws://' + address + '/control');
 	ws.onmessage = function (message) {
@@ -107,6 +101,8 @@ window.onload = function() {
 }
 
 window.onbeforeunload = function () {
+    if (client)
+        client.dispose();
     if (ws)
 	    ws.close();
 }

@@ -1,6 +1,8 @@
 ﻿
 import logger = require('./Logger');
 import autobahn = require('autobahn');
+import KurentoHubRpcNames = require('./KurentoHubRpcNames');
+import ConnectionState = require('./ConnectionState');
 import CrossbarConfig = require('./CrossbarConfig');
 import WampWebTransportConfiguration = require('./Wamp/Transport/WampWebTransportConfiguration');
 import WampRouterConnectionManager = require('./WampRouterConnectionManager');
@@ -30,9 +32,13 @@ class KurentoHubServer {
         return this.connectionManager.stop();
     }
 
+    public get state(): ConnectionState {
+        return this.connectionManager.state;
+    } 
+
     private registerRpcs(session: autobahn.Session): Promise<autobahn.IRegistration[]> {
         var res = Promise.all([
-            session.register('com.kurentoHub.register', (args, kwargs) => this.register())
+            session.register(KurentoHubRpcNames.register, (args, kwargs) => this.register())
         ]);
         res.then(registrations => 
             registrations.forEach(r => logger.debug('KurentoHubServer RPC registered: ' + r.procedure)));

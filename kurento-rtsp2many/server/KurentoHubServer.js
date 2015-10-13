@@ -1,4 +1,5 @@
 var logger = require('./Logger');
+var KurentoHubRpcNames = require('./KurentoHubRpcNames');
 var CrossbarConfig = require('./CrossbarConfig');
 var WampRouterConnectionManager = require('./WampRouterConnectionManager');
 var WampCraCredentials = require('./WampCraCredentials');
@@ -19,10 +20,17 @@ var KurentoHubServer = (function () {
     KurentoHubServer.prototype.stop = function () {
         return this.connectionManager.stop();
     };
+    Object.defineProperty(KurentoHubServer.prototype, "state", {
+        get: function () {
+            return this.connectionManager.state;
+        },
+        enumerable: true,
+        configurable: true
+    });
     KurentoHubServer.prototype.registerRpcs = function (session) {
         var _this = this;
         var res = Promise.all([
-            session.register('com.kurentoHub.register', function (args, kwargs) { return _this.register(); })
+            session.register(KurentoHubRpcNames.register, function (args, kwargs) { return _this.register(); })
         ]);
         res.then(function (registrations) {
             return registrations.forEach(function (r) { return logger.debug('KurentoHubServer RPC registered: ' + r.procedure); });

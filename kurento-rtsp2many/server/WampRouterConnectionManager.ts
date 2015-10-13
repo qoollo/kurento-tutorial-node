@@ -1,5 +1,6 @@
 ﻿
 import autobahn = require('autobahn');
+import ConnectionState = require('./ConnectionState');
 import WampCredentials = require('./WampCredentials');
 import WampCraCredentials = require('./WampCraCredentials');
 
@@ -8,20 +9,22 @@ class WampRouterConnectionManager {
     private url: string;
     private realm: string;
     private credentials: WampCredentials;
-    
-    private logger;
+
+    private logger: Console;
 
     private connectionState: ConnectionState;
     private connection: autobahn.Connection = null;
-    private session: autobahn.Session = null;
+    private _session: autobahn.Session = null;
+
+    private static closeReason: string = 'Deliberate closing';
 
     constructor(url: string, realm: string, credentials: WampCredentials, logger) {
         this.url = url;
         this.realm = realm;
         this.credentials = credentials;
-        
+
         this.logger = logger;
-        
+
         this.connectionState = ConnectionState.NotCreated;
     }
 
@@ -36,6 +39,12 @@ class WampRouterConnectionManager {
             .then(c => {
                 this.connection = c;
                 return this.openConnection(c);
+            })
+            .then(s => this.subscribeSessionEvents(s))
+            .catch(e => {
+                var msg = 'Failed to open WAMP Router connection: ' + (e.message || e);
+                this.logger.error(msg);
+                return Promise.reject(msg);
             });
     }
 
@@ -47,7 +56,7 @@ class WampRouterConnectionManager {
         }
 
         return new Promise<void>((resolve, reject) => {
-            this.connection.close('Deliberate closing', 'Close please');
+            this.connection.close(WampRouterConnectionManager.closeReason, 'Close please');
             var original = this.connection.onclose;
             this.connection.onclose = (r, d) => {
                 resolve();
@@ -56,18 +65,26 @@ class WampRouterConnectionManager {
         });
     }
 
+    public get state(): ConnectionState {
+        return this.connectionState;
+    }
+
+    public get session(): autobahn.Session {
+        return this._session;
+    }
+
     private onConnectionOpened(session: autobahn.Session, details: any): void {
         this.logger.info('Connection to WAMP Router opened. Session id: %d', session.id);
-        this.session = session;
+        this._session = session;
         this.connectionState = ConnectionState.Connected;
     }
 
     private onConnectionClosed(reason: string, details: any): boolean {
-        this.logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this.session.id);
+        this.logger.info('Connection to WAMP Router closed. Session id: %d. Reason: ' + reason, this._session.id);
         this.connectionState = ConnectionState.Disconnected;
         this.connection = null;
-        this.session = null;
-        return false;
+        this._session = null;
+        return reason == WampRouterConnectionManager.closeReason;
     }
 
     private createConnection(): Promise<autobahn.Connection> {
@@ -90,13 +107,20 @@ class WampRouterConnectionManager {
             this.connectionState = ConnectionState.Connecting;
         });
     }
-}
 
-enum ConnectionState {
-    NotCreated,
-    Connecting,
-    Connected,
-    Disconnected
+    private subscribeSessionEvents(session: autobahn.Session): autobahn.Session {
+        session.onjoin = f => this.onNodeJoined(f);
+        session.onleave = (r, d) => this.onNodeLeft(r, d);
+        return session;
+    }
+
+    private onNodeJoined(roleFeatures: any): void {
+        this.logger.info('WAMP Session event: join.', roleFeatures);
+    }
+
+    private onNodeLeft(reason: string, details: any): void {
+        this.logger.info('WAMP Session event: leave. Reason: ' + reason + '. Details: ', details);
+    }
 }
 
 export = WampRouterConnectionManager;

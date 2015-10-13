@@ -20,12 +20,13 @@ import express = require('express');
 import ws = require('ws');
 import minimist = require('minimist');
 import url = require('url');
+import readline = require('readline');
 var KurentoClient: Kurento.Client.IKurentoClientConstructor = require('kurento-client');
 var kurentoUtils: Kurento.Utils.IKurentoUtils = require('kurento-utils');
 
 import cfg = require('./AppConfig');
-import logger = require('./Logger'); 
-import KurentoHubServer = require('./KurentoHubServer'); 
+import logger = require('./Logger');
+import KurentoHubServer = require('./KurentoHubServer');
 
 import MasterManager = require('./MasterManager');
 import Master = require('./Master');
@@ -37,7 +38,7 @@ var argv = minimist(process.argv.slice(2),
     {
         default:
         {
-            as_uri: "http://localhost:8080/",
+            as_uri: "http://localhost:8081/",
             ws_uri: "ws://10.5.6.119:8888/kurento"
         }
     });
@@ -49,6 +50,30 @@ var app = express();
 var kurentoHubServer = new KurentoHubServer();
 kurentoHubServer.start().then(() => {
     debugger;
+});
+
+//  Windows handler for Ctrl + C
+if (process.platform == 'win32') {
+    var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    rl.on('SIGINT', () => process.emit('SIGINT'));
+}
+
+//  Handler for Ctrl + C
+process.on('SIGINT', () => {
+    logger.info("Caught interrupt signal. Stopping KurentoHubServer...");
+
+    kurentoHubServer.stop()
+        .then(() => {
+            logger.info('KurentoHubServer stopped. Goodbye!');
+            process.exit();
+        }, () => {
+            logger.error('Failed to stop KurentoHubServer.');
+            process.exit(1);
+        });
 });
 
 /*
@@ -239,4 +264,4 @@ enum RpcResponseStatus {
     Error
 }
 
-app.use(express.static(path.join(__dirname, 'static')));
+//app.use(express.static(path.join(__dirname, 'static')));

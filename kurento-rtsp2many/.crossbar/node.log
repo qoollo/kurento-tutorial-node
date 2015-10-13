@@ -1,0 +1,26 @@
+2015-10-13T11:34:17+0300 [Controller   8872] Automatically choosing optimal Twisted reactor
+2015-10-13T11:34:17+0300 [Controller   8872] Running on Windows and optimal reactor (ICOP) was installed.
+2015-10-13T11:34:17+0300 [Controller   8872] [33m[1m     __  __  __  __  __  __      __     __[0m
+2015-10-13T11:34:17+0300 [Controller   8872] [33m[1m    /  `|__)/  \/__`/__`|__) /\ |__)  |/  \[0m
+2015-10-13T11:34:17+0300 [Controller   8872] [33m[1m    \__,|  \\__/.__/.__/|__)/~~\|  \. |\__/[0m
+2015-10-13T11:34:17+0300 [Controller   8872] [33m[1m                                        [0m
+2015-10-13T11:34:17+0300 [Controller   8872]     Version: [33m[1m0.11.1[0m     
+2015-10-13T11:34:17+0300 [Controller   8872] 
+2015-10-13T11:34:17+0300 [Controller   8872] Starting from node directory C:\kurento-tutorial-node\kurento-rtsp2many\.crossbar
+2015-10-13T11:34:18+0300 [Controller   8872] Loading node configuration file 'C:\kurento-tutorial-node\kurento-rtsp2many\.crossbar\config-dev.json'
+2015-10-13T11:34:18+0300 [Controller   8872] Entering reactor event loop...
+2015-10-13T11:34:18+0300 [Controller   8872] Warning, could not set process title (setproctitle not installed)
+2015-10-13T11:34:18+0300 [Controller   8872] Process utilities not available
+2015-10-13T11:34:18+0300 [Controller   8872] Joined realm 'crossbar' on node management router
+2015-10-13T11:34:18+0300 [Controller   8872] No WAMPlets detected in enviroment.
+2015-10-13T11:34:18+0300 [Controller   8872] Starting Router with ID 'worker1'...
+2015-10-13T11:34:19+0300 [Router       3532] Worker running under CPython-IOCPReactor
+2015-10-13T11:34:20+0300 [Router       3532] Process utilities not available
+2015-10-13T11:34:20+0300 [Controller   8872] Router with ID 'worker1' and PID 3532 started
+2015-10-13T11:34:20+0300 [Controller   8872] Router 'worker1': realm 'realm1' (named 'AquaMedKurentoInteraction') started
+2015-10-13T11:34:20+0300 [Controller   8872] Router 'worker1': role 'role1' (named 'KurentoHub') started on realm 'realm1'
+2015-10-13T11:34:20+0300 [Controller   8872] Router 'worker1': role 'role2' (named 'VideoConsumer') started on realm 'realm1'
+2015-10-13T11:34:20+0300 [Router       3532] Site starting on 8080
+2015-10-13T11:34:20+0300 [Controller   8872] Router 'worker1': transport 'transport1' started
+2015-10-13T11:34:53+0300 [Router       3532] onAuthenticate: GaebUVvnsUxYTBKCaSa/Vo4zKxSpKSlmGeBEYbm8GCA= {}
+2015-10-13T11:35:08+0300 [Router       3532] onAuthenticate: Myoj3jN4yx6GhImNL3yN8Vk79hxzUHc7Kbkz5wF56l8= {}
