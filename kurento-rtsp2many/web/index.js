@@ -14313,7 +14313,8 @@ module.exports = ConnectionState;
 
 },{}],83:[function(require,module,exports){
 module.exports = {
-    register: 'com.kurentoHub.register'
+    register: 'com.kurentoHub.register',
+    connectToStream: 'com.kurentoHub.connectToStream'
 };
 
 //# sourceMappingURL=KurentoHubRpcNames.js.map
@@ -14664,6 +14665,9 @@ var KurentoHubClient = (function () {
     });
     KurentoHubClient.prototype.register = function () {
         return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.register));
+    };
+    KurentoHubClient.prototype.connectToStream = function (streamUrl, sdpOffer) {
+        return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.connectToStream, [streamUrl, sdpOffer]));
     };
     KurentoHubClient.prototype.handleRpcError = function (rpcPromise) {
         var _this = this;

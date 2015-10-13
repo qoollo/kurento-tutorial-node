@@ -48,6 +48,7 @@
   <ItemGroup>
     <Folder Include=".crossbar\" />
     <Folder Include="server\" />
+    <Folder Include="server\Protocol\" />
     <Folder Include="server\Wamp\" />
     <Folder Include="server\Wamp\Transport\" />
     <Folder Include="typings\" />
@@ -72,6 +73,7 @@
     <TypeScriptCompile Include="server\ConnectionState.ts" />
     <TypeScriptCompile Include="server\CrossbarConfig.ts" />
     <TypeScriptCompile Include="server\KurentoHubRpcNames.ts" />
+    <TypeScriptCompile Include="server\Protocol\RpcResponses.d.ts" />
     <TypeScriptCompile Include="server\server.ts" />
     <TypeScriptCompile Include="server\IdCounter.ts" />
     <TypeScriptCompile Include="server\KurentoClientManager.ts" />

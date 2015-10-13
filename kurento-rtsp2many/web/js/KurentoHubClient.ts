@@ -41,6 +41,10 @@ class KurentoHubClient {
         return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.register));
     }
 
+    public connectToStream(streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
+        return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.connectToStream, [streamUrl, sdpOffer]));
+    }
+
     private handleRpcError<T>(rpcPromise: Promise<T>): Promise<T> {
         return rpcPromise
             .catch(e => {

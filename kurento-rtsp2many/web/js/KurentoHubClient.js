@@ -32,6 +32,9 @@ var KurentoHubClient = (function () {
     KurentoHubClient.prototype.register = function () {
         return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.register));
     };
+    KurentoHubClient.prototype.connectToStream = function (streamUrl, sdpOffer) {
+        return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.connectToStream, [streamUrl, sdpOffer]));
+    };
     KurentoHubClient.prototype.handleRpcError = function (rpcPromise) {
         var _this = this;
         return rpcPromise

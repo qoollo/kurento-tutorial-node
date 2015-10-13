@@ -1,4 +1,5 @@
 ﻿
 export = {
-    register: 'com.kurentoHub.register'
+    register: 'com.kurentoHub.register',
+    connectToStream: 'com.kurentoHub.connectToStream'
 }
