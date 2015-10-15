@@ -1,0 +1,6 @@
+class MonitStatus{
+	
+	
+}
+
+export = MonitStatus;
