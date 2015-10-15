@@ -1,7 +1,7 @@
 ﻿
 declare module Protocol {
 
-    interface IRegisterResponse {
+    interface IClientId {
         clientId: number;
     }
 

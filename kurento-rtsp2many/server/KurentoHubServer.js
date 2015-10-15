@@ -4,6 +4,7 @@ var KurentoHubRpcNames = require('./KurentoHubRpcNames');
 var CrossbarConfig = require('./CrossbarConfig');
 var WampRouterConnectionManager = require('./WampRouterConnectionManager');
 var WampCraCredentials = require('./WampCraCredentials');
+var KurentoHubDb = require('./Storage/KurentoHubDb');
 var MasterManager = require('./MasterManager');
 var Master = require('./Master');
 var ViewerManager = require('./ViewerManager');
@@ -14,6 +15,7 @@ var KurentoHubServer = (function () {
         this.masterManager = new MasterManager();
         this.viewerManager = new ViewerManager();
         this.kurentoClientManager = new KurentoClientManager(KurentoClient);
+        this.db = new KurentoHubDb();
     }
     KurentoHubServer.prototype.start = function () {
         var _this = this;
@@ -52,9 +54,7 @@ var KurentoHubServer = (function () {
         return res;
     };
     KurentoHubServer.prototype.register = function () {
-        return Promise.resolve({
-            clientId: 1
-        });
+        return this.db.registerVideoConsumer();
     };
     KurentoHubServer.prototype.connectToStream = function (streamUrl, sdpOffer) {
         var _this = this;

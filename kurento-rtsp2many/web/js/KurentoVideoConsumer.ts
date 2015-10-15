@@ -1,6 +1,6 @@
 
 import ConnectionState = require('../../server/ConnectionState');
-import KurentoClientHub = require('./KurentoHubClient');
+import KurentoHubClient = require('./KurentoHubClient');
 import KurentoPlayer = require('./KurentoPlayer');
 
 class KurentoVideoConsumer {
@@ -8,30 +8,54 @@ class KurentoVideoConsumer {
     constructor(kurentoHubDomain: string, logger: Console = console) {
         this.logger = logger;
 
-        this.hub = new KurentoClientHub(KurentoVideoConsumer.crossbarConfig, kurentoHubDomain, logger);
+        this.hub = new KurentoHubClient(KurentoVideoConsumer.crossbarConfig, kurentoHubDomain, logger);
     }
 
     private logger: Console;
-    private hub: KurentoClientHub = null;
+    private hub: KurentoHubClient = null;
 
     public playStream(streamUrl: string): Promise<KurentoPlayer> {
         var promise: Promise<any>;
         if (this.hub.state == ConnectionState.NotCreated) {
-            promise = this.hub.start()
+            promise = this.hub.start();
         } else
             promise = Promise.resolve();
-        return promise.then(() => {
-            this.hub.register().then(r => {
-                debugger;
-                this.logger.log('RPC "register" response: ' +  r);
+        return promise
+            .then(() => this.authenticate())
+            .then(c => {
+                this.logger.log('Ready to start stream');
+                return new KurentoPlayer('');
             });
-            return new KurentoPlayer('');
-        });
     }
 
     public dispose(): void {
         this.hub.stop();
     }
+    
+    private authenticate(): Promise<Protocol.IClientId> {
+        return this.retrieveCredentials()
+            .then(c => {
+                var res: Promise<Protocol.IClientId>;
+                if (c && c.clientId) {
+                    this.logger.log('Already authorized as ' + c.clientId);
+                    res = Promise.resolve(c);
+                } else {
+                    this.logger.log('Not authorized yet. Registering...');
+                    res = this.hub.register();
+                    res.then(cc => this.logger.log('Successfully registered as ' + cc.clientId),
+                        err => this.logger.error('Failed to register.' + err));
+                }
+                return res;                
+            })
+    }
+    
+    retrieveCredentials(): Promise<Protocol.IClientId> {
+        var str = localStorage.getItem(KurentoVideoConsumer.credentialsKey),
+            res = <Protocol.IClientId>JSON.parse(str);
+        return Promise.resolve(res);
+    }
+    
+    private static credentialsKey: string = 'KurentoHubClientCredentials';
 
     private static crossbarConfig = {
         "type": "web",

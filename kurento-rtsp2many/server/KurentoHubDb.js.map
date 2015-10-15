@@ -1,0 +1,1 @@
+{"version":3,"sources":["server/KurentoHubDb.ts"],"names":["Kurento","Kurento.constructor"],"mappings":"AACA;IAAAA;IAAaC,CAAAD,AAACC;IAADD,cAACA;AAADA,CAAb,AAAcA,IAAD","file":"server/KurentoHubDb.js","sourcesContent":["\r\nclass Kurento"],"sourceRoot":"../"}

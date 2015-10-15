@@ -9,6 +9,7 @@ import WampWebTransportConfiguration = require('./Wamp/Transport/WampWebTranspor
 import WampRouterConnectionManager = require('./WampRouterConnectionManager');
 import WampCredentials = require('./WampCredentials');
 import WampCraCredentials = require('./WampCraCredentials');
+import KurentoHubDb = require('./Storage/KurentoHubDb');
 
 
 import MasterManager = require('./MasterManager');
@@ -22,8 +23,10 @@ import KurentoClientManager = require('./KurentoClientManager');
 class KurentoHubServer {
 
     private connectionManager: WampRouterConnectionManager;
+    private db: KurentoHubDb;
 
     constructor() {
+        this.db = new KurentoHubDb();
     }
 
     start(): Promise<void> {
@@ -59,10 +62,8 @@ class KurentoHubServer {
         return res;
     }
 
-    register(): Promise<Protocol.IRegisterResponse> {
-        return Promise.resolve({
-            clientId: 1
-        });
+    register(): Promise<Protocol.IClientId> {
+        return this.db.registerVideoConsumer();
     }
 
     connectToStream(streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {

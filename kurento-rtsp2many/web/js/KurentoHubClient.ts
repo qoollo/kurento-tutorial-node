@@ -37,7 +37,7 @@ class KurentoHubClient {
         return this.connectionManager.state;
     } 
 
-    public register(): Promise<number> {
+    public register(): Promise<Protocol.IClientId> {
         return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.register));
     }
 
