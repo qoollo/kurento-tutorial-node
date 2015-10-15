@@ -55,7 +55,7 @@ function sign (key, challenge) {
 exports.sign = sign;
 exports.derive_key = derive_key;
 
-},{"crypto-js":29}],3:[function(require,module,exports){
+},{"crypto-js":34}],3:[function(require,module,exports){
 ///////////////////////////////////////////////////////////////////////////////
 //
 //  AutobahnJS - http://autobahn.ws, http://wamp.ws
@@ -109,7 +109,7 @@ function auth(session, user, extra) {
 
 exports.auth = auth;
 
-},{"when":80,"when/function":56}],4:[function(require,module,exports){
+},{"when":87,"when/function":63}],4:[function(require,module,exports){
 (function (global){
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -173,7 +173,7 @@ exports.util = util;
 exports.log = log;
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../package.json":20,"./auth/cra.js":2,"./auth/persona.js":3,"./configure.js":5,"./connection.js":6,"./log.js":7,"./polyfill.js":8,"./session.js":16,"./util.js":19,"when":80,"when/monitor/console":78}],5:[function(require,module,exports){
+},{"../package.json":22,"./auth/cra.js":2,"./auth/persona.js":3,"./configure.js":5,"./connection.js":6,"./log.js":7,"./polyfill.js":8,"./session.js":16,"./util.js":20,"when":87,"when/monitor/console":85}],5:[function(require,module,exports){
 ///////////////////////////////////////////////////////////////////////////////
 //
 //  AutobahnJS - http://autobahn.ws, http://wamp.ws
@@ -231,9 +231,12 @@ _transports.register("websocket", websocket.Factory);
 var longpoll = require('./transport/longpoll.js');
 _transports.register("longpoll", longpoll.Factory);
 
+var rawsocket = require('./transport/rawsocket.js');
+_transports.register("rawsocket", rawsocket.Factory);
+
 exports.transports = _transports;
 
-},{"./transport/longpoll.js":17,"./transport/websocket.js":18}],6:[function(require,module,exports){
+},{"./transport/longpoll.js":17,"./transport/rawsocket.js":18,"./transport/websocket.js":19}],6:[function(require,module,exports){
 (function (global){
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -335,7 +338,7 @@ var Connection = function (options) {
    }
 
    // maximum number of reconnection attempts
-   self._max_retries = self._options.max_retries || 15;
+   self._max_retries = typeof self._options.max_retries !== 'undefined' ?  self._options.max_retries : 15;
 
    // initial retry delay in seconds
    self._initial_retry_delay = self._options.initial_retry_delay || 1.5;
@@ -473,7 +476,7 @@ Connection.prototype._autoreconnect_advance = function () {
    self._retry_count += 1;
 
    var res;
-   if (self._retry && self._retry_count <= self._max_retries) {
+   if (self._retry && (self._max_retries === -1 || self._retry_count <= self._max_retries)) {
       res = {
          count: self._retry_count,
          delay: self._retry_delay,
@@ -722,7 +725,7 @@ Object.defineProperty(Connection.prototype, "isRetrying", {
 exports.Connection = Connection;
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./autobahn.js":4,"./log.js":7,"./session.js":16,"./util.js":19,"when":80}],7:[function(require,module,exports){
+},{"./autobahn.js":4,"./log.js":7,"./session.js":16,"./util.js":20,"when":87}],7:[function(require,module,exports){
 (function (global){
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -2758,24 +2761,37 @@ WAMP_FEATURES = {
    caller: {
       features: {
          caller_identification: true,
+         //call_timeout: true,
+         //call_canceling: true,
          progressive_call_results: true
       }
    },
    callee: {
       features: {
-         progressive_call_results: true
+         caller_identification: true,
+         //call_trustlevels: true,
+         pattern_based_registration: true,
+         shared_registration: true,
+         //call_timeout: true,
+         //call_canceling: true,
+         progressive_call_results: true,
+         registration_revocation: true
       }
    },
    publisher: {
       features: {
+         publisher_identification: true,
          subscriber_blackwhite_listing: true,
-         publisher_exclusion: true,
-         publisher_identification: true
+         publisher_exclusion: true
       }
    },
    subscriber: {
       features: {
-         publisher_identification: true
+         publisher_identification: true,
+         //publication_trustlevels: true,
+         pattern_based_subscription: true,
+         subscription_revocation: true
+         //event_history: true,
       }
    }
 };
@@ -2838,6 +2854,16 @@ var Subscription = function (topic, handler, options, session, id) {
    self.id = id;
 
    self.active = true;
+
+   // this will fire when the handler is unsubscribed
+   self._on_unsubscribe = session._defer();
+
+   if (self._on_unsubscribe.promise.then) {
+      // whenjs has the actual user promise in an attribute
+      self.on_unsubscribe = self._on_unsubscribe.promise;
+   } else {
+      self.on_unsubscribe = self._on_unsubscribe;
+   }
 };
 
 
@@ -2846,7 +2872,6 @@ Subscription.prototype.unsubscribe = function () {
    var self = this;
    return self.session.unsubscribe(self);
 };
-
 
 
 var Registration = function (procedure, endpoint, options, session, id) {
@@ -2860,6 +2885,16 @@ var Registration = function (procedure, endpoint, options, session, id) {
    self.id = id;
 
    self.active = true;
+
+   // this will fire when the endpoint is unregistered
+   self._on_unregister = session._defer();
+
+   if (self._on_unregister.promise.then) {
+      // whenjs has the actual user promise in an attribute
+      self.on_unregister = self._on_unregister.promise;
+   } else {
+      self.on_unregister = self._on_unregister;
+   }
 };
 
 
@@ -2953,7 +2988,9 @@ var Session = function (socket, defer, onchallenge) {
    // prefix shortcuts for URIs
    self._prefixes = {};
 
-
+   // the defaults for 'disclose_me'
+   self._caller_disclose_me = false;
+   self._publisher_disclose_me = false;
 
    self._send_wamp = function (msg) {
       // forward WAMP message to be sent to WAMP transport
@@ -3041,12 +3078,13 @@ var Session = function (socket, defer, onchallenge) {
          var d = r[0];
          var subscription = r[1];
 
-         if (subscription in self._subscriptions) {
-            var subs = self._subscriptions[subscription];
+         if (subscription.id in self._subscriptions) {
+            var subs = self._subscriptions[subscription.id];
             // the following should actually be NOP, since UNSUBSCRIBE was
             // only sent when subs got empty
             for (var i = 0; i < subs.length; ++i) {
                subs[i].active = false;
+               subs[i].on_unsubscribe.resolve();
             }
             delete self._subscriptions[subscription];
          }
@@ -3056,7 +3094,29 @@ var Session = function (socket, defer, onchallenge) {
          delete self._unsubscribe_reqs[request];
 
       } else {
-         self._protocol_violation("UNSUBSCRIBED received for non-pending request ID " + request);
+
+         if (request === 0) {
+
+            // router actively revoked our subscription
+            //
+            var details = msg[2];
+            var subscription_id = details.subscription;
+            var reason = details.reason;
+
+            if (subscription_id in self._subscriptions) {
+               var subs = self._subscriptions[subscription_id];
+               for (var i = 0; i < subs.length; ++i) {
+                  subs[i].active = false;
+                  subs[i]._on_unsubscribe.resolve(reason);
+               }
+               delete self._subscriptions[subscription_id];
+            } else {
+               self._protocol_violation("non-voluntary UNSUBSCRIBED received for non-existing subscription ID " + subscription_id);
+            }
+
+         } else {
+            self._protocol_violation("UNSUBSCRIBED received for non-pending request ID " + request);
+         }
       }
    };
    self._MESSAGE_MAP[MSG_TYPE.UNSUBSCRIBED] = self._process_UNSUBSCRIBED;
@@ -3254,7 +3314,27 @@ var Session = function (socket, defer, onchallenge) {
          delete self._unregister_reqs[request];
 
       } else {
-         self._protocol_violation("UNREGISTERED received for non-pending request ID " + request);
+
+         if (request === 0) {
+
+            // the router actively revoked our registration
+            //
+            var details = msg[2];
+            var registration_id = details.registration;
+            var reason = details.reason;
+
+            if (registration_id in self._registrations) {
+               var registration = self._registrations[registration_id];
+               registration.active = false;
+               registration._on_unregister.resolve(reason);
+               delete self._registrations[registration_id];
+            } else {
+               self._protocol_violation("non-voluntary UNREGISTERED received for non-existing registration ID " + registration_id);
+            }
+
+         } else {
+            self._protocol_violation("UNREGISTERED received for non-pending request ID " + request);
+         }
       }
    };
    self._MESSAGE_MAP[MSG_TYPE.UNREGISTERED] = self._process_UNREGISTERED;
@@ -3668,6 +3748,26 @@ Object.defineProperty(Session.prototype, "features", {
 });
 
 
+Object.defineProperty(Session.prototype, "caller_disclose_me", {
+   get: function () {
+      return this._caller_disclose_me;
+   },
+   set: function (newValue) {
+      this._caller_disclose_me = newValue;
+   }
+});
+
+
+Object.defineProperty(Session.prototype, "publisher_disclose_me", {
+   get: function () {
+      return this._publisher_disclose_me;
+   },
+   set: function (newValue) {
+      this._publisher_disclose_me = newValue;
+   }
+});
+
+
 Object.defineProperty(Session.prototype, "subscriptions", {
    get: function () {
       var keys = Object.keys(this._subscriptions);
@@ -3722,7 +3822,7 @@ Session.prototype.log = function () {
          var items = [header + ": "];
          for (var i = 0; i < arguments.length; i += 1) {
             items.push(arguments[i]);
-         }         
+         }
          console.log.apply(console, items);
       }
    }
@@ -3798,20 +3898,30 @@ Session.prototype.call = function (procedure, args, kwargs, options) {
       throw "session not open";
    }
 
+   options = options || {};
+
+   // only set option if user hasn't set a value and global option is "on"
+   if (options.disclose_me === undefined && self._caller_disclose_me) {
+      options.disclose_me = true;
+   }
+
    // create and remember new CALL request
    //
-   var request = newid();
    var d = self._defer();
+   var request = newid();
    self._call_reqs[request] = [d, options];
 
    // construct CALL message
    //
-   var msg = [MSG_TYPE.CALL, request, options || {}, self.resolve(procedure)];
+   var msg = [MSG_TYPE.CALL, request, options, self.resolve(procedure)];
    if (args) {
       msg.push(args);
       if (kwargs) {
          msg.push(kwargs);
       }
+   } else if (kwargs) {
+      msg.push([]);
+      msg.push(kwargs);
    }
 
    // send WAMP message
@@ -3840,25 +3950,33 @@ Session.prototype.publish = function (topic, args, kwargs, options) {
       throw "session not open";
    }
 
-   var ack = options && options.acknowledge;
-   var d = null;
+   options = options || {};
+
+   // only set option if user hasn't set a value and global option is "on"
+   if (options.disclose_me === undefined && self._publisher_disclose_me) {
+      options.disclose_me = true;
+   }
 
    // create and remember new PUBLISH request
    //
+   var d = null;
    var request = newid();
-   if (ack) {
+   if (options.acknowledge) {
       d = self._defer();
       self._publish_reqs[request] = [d, options];
    }
 
    // construct PUBLISH message
    //
-   var msg = [MSG_TYPE.PUBLISH, request, options || {}, self.resolve(topic)];
+   var msg = [MSG_TYPE.PUBLISH, request, options, self.resolve(topic)];
    if (args) {
       msg.push(args);
       if (kwargs) {
          msg.push(kwargs);
       }
+   } else if (kwargs) {
+      msg.push([]);
+      msg.push(kwargs);
    }
 
    // send WAMP message
@@ -4102,7 +4220,7 @@ exports.Registration = Registration;
 exports.Publication = Publication;
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./log.js":7,"./util.js":19,"when":80,"when/function":56}],17:[function(require,module,exports){
+},{"./log.js":7,"./util.js":20,"when":87,"when/function":63}],17:[function(require,module,exports){
 ///////////////////////////////////////////////////////////////////////////////
 //
 //  AutobahnJS - http://autobahn.ws, http://wamp.ws
@@ -4170,7 +4288,7 @@ Factory.prototype.create = function () {
       var rxseq = 0;
 
       var options = {'protocols': ['wamp.2.json']};
-      var request_timeout = self._options.request_timeout || 2000;
+      var request_timeout = self._options.request_timeout || 12000; // timeout here > than the 10s default in Crossbar.io
 
       util.http_post(self._options.url + '/open', JSON.stringify(options), request_timeout).then(
 
@@ -4308,7 +4426,705 @@ Factory.prototype.create = function () {
 
 exports.Factory = Factory;
 
-},{"../log.js":7,"../util.js":19,"when":80}],18:[function(require,module,exports){
+},{"../log.js":7,"../util.js":20,"when":87}],18:[function(require,module,exports){
+(function (global,Buffer){
+///////////////////////////////////////////////////////////////////////////////
+//
+//  AutobahnJS - http://autobahn.ws, http://wamp.ws
+//
+//  A JavaScript library for WAMP ("The Web Application Messaging Protocol").
+//
+//  Copyright (C) 2011-2014 Tavendo GmbH, http://tavendo.com
+//
+//  Licensed under the MIT License.
+//  http://www.opensource.org/licenses/mit-license.php
+//
+///////////////////////////////////////////////////////////////////////////////
+
+
+var util = require('../util.js');
+var log = require('../log.js');
+
+var EventEmitter = require('events').EventEmitter;
+
+
+function Factory (options) {
+   var self = this;
+
+   if (!options.protocols) {
+      options.protocols = ['wamp.2.json'];
+   } else {
+      util.assert(Array.isArray(options.protocols), "options.protocols must be an array");
+   }
+
+   options.rawsocket_max_len_exp = options.rawsocket_max_len_exp || 24;
+
+   self._options = options;
+}
+
+
+Factory.prototype.type = "rawsocket";
+
+
+Factory.prototype.create = function () {
+
+   var self = this;
+
+   // the WAMP transport we create
+   var transport = {};
+
+   // these will get defined further below
+   transport.protocol = undefined;
+   transport.send = undefined;
+   transport.close = undefined;
+
+   // these will get overridden by the WAMP session using this transport
+   transport.onmessage = function () {};
+   transport.onopen = function () {};
+   transport.onclose = function () {};
+
+   transport.info = {
+      type: 'rawsocket',
+      url: null,
+      protocol: 'wamp.2.json'
+   };
+
+
+   // Test below used to be via the 'window' object in the browser.
+   // This fails when running in a Web worker.
+   //
+   // running in Node.js
+   //
+   if (global.process && global.process.versions.node) {
+
+      (function () {
+         var net = require('net');
+         var socket, protocol;
+
+         // Create the options object to initiate the connection
+         if (self._options.path) {
+            connectionOptions = {
+               path: self._options.path,
+               allowHalfOpen: true
+            };
+         } else if (self._options.port) {
+            connectionOptions = {
+               port: self._options.port || 8000,
+               host: self._options.host || 'localhost',
+               allowHalfOpen: true
+            };
+         } else {
+            throw "You must specify a host/port combination or a unix socket path to connect to";
+         }
+
+         // Open a TCP socket and setup the protocol
+         socket = net.connect(connectionOptions);
+         protocol = new Protocol(socket, {
+            serializer: 'json',
+            max_len_exp: self._options.rawsocket_max_len_exp
+         });
+
+         // Relay connect event to the onopen transport handler
+         protocol.on('connect', function (msg) {
+            log.debug('RawSocket transport negociated');
+            transport.onopen(msg);
+         });
+
+         // Relay data event to the onmessage transport handler
+         protocol.on('data', function (msg) {
+            log.debug('RawSocket transport received', msg);
+            transport.onmessage(msg);
+         });
+
+         // Relay the close event to the onclose transport handler
+         protocol.on('close', function (had_error) {
+            log.debug('RawSocket transport closed');
+            transport.onclose({
+               code: 999,
+               reason: '',
+               wasClean: !had_error
+            });
+         });
+
+         // Log errors
+         protocol.on('error', function (error) {
+            log.debug('RawSocket transport error', error);
+         });
+
+         // Relay close call
+         transport.close = function (code, reason) {
+            log.debug('RawSocket transport closing', code, reason);
+            protocol.close();
+         };
+
+         // Relay send call
+         transport.send = function (msg) {
+            log.debug('RawSocket transport sending', msg);
+            protocol.write(msg);
+         };
+
+      })();
+   //
+   // running in the browser
+   //
+   } else {
+      throw "No RawSocket support in browser";
+   }
+
+   return transport;
+};
+
+/**
+ *  Protocol constructor
+ *
+ * @param {Stream} stream    Source stream object
+ * @param {Object} [options] Protocol options
+ *
+ * @param {String} [options.serializer] The serializer to use (default: json)
+ * @param {Integer} [options.max_len_exp] The maximum allowed frame length as
+ *        2^x(default: 24)
+ * @param {Integer|False} [options.ping_timeout] Maximum duration in ms to wait
+ *        for an answer to a PING packet (default: 2000)
+ * @param {Integer|False} [options.autoping] If an integer, send a PING packet*
+ *        every `x`ms (default: false)
+ * @param {Boolean} [options.fail_on_ping_timeout] Whether to close the
+ *        underlying connection when the peer fails to answer to a PING within
+ *        the `ping_timeout` window (default: true)
+ * @param {Integer|False} [options.packet_timeout] The maximum amount of time to
+ *        wait for a packet !!NOT IMPLEMENTED!! (default: 2000)
+ *
+ * @see https://github.com/tavendo/WAMP/blob/master/spec/advanced.md#rawsocket-transport
+ */
+function Protocol (stream, options) {
+   this._options = {
+      _peer_serializer: null, // Will hold the serializer declared by the peer
+      _peer_max_len_exp: 0    // Will hold the maximum frame length declared by
+                              // the peer
+   };
+
+   this._options = util.defaults(this._options, options, this.DEFAULT_OPTIONS);
+
+   // Check valid options
+   util.assert(this._options.serializer in this.SERIALIZERS,
+      'Unsupported serializer: ' + this._options.serializer);
+
+   util.assert(this._options.max_len_exp >= 9 &&
+      this._options.max_len_exp <= 36,
+      'Message length out of bounds [9, 36]: '+ this._options.max_len_exp);
+
+   util.assert(!this._options.autoping ||
+      (Number.isInteger(this._options.autoping) && this._options.autoping >= 0),
+      'Autoping interval must be positive');
+
+   util.assert(!this._options.ping_timeout ||
+      (Number.isInteger(this._options.ping_timeout) &&
+         this._options.ping_timeout >= 0),
+      'Ping timeout duration must be positive');
+
+   util.assert(!this._options.packet_timeout ||
+      (Number.isInteger(this._options.packet_timeout) &&
+         this._options.packet_timeout >= 0),
+      'Packet timeout duration must be positive');
+
+   util.assert((!this._options.autoping || !this._options.ping_timeout) ||
+      this._options.autoping > this._options.ping_timeout,
+      'Autoping interval (' + this._options.autoping + ') must be lower ' +
+      'than ping timeout (' + this._options.ping_timeout + ')');
+
+   // Will store a reference to the timeout function associated with the last
+   // PING packet
+   this._ping_timeout = null;
+
+   // Will store the payload of the last PING packet
+   this._ping_payload = null;
+
+   // Will store the autoping setInterval reference
+   this._ping_interval = null;
+
+   // Protocol status (see Protocol.prototype.STATUS)
+   this._status = this.STATUS.UNINITIATED;
+
+   this._stream = stream;
+   this._emitter = new EventEmitter();
+
+   // Frame buffer
+   this._buffer = new Buffer(4);
+   this._bufferLen = 0;
+   this._msgLen = 0;
+
+   // Hook events
+   var self = this;
+   this._stream.on('data', function (data) {
+      self._read(data);
+   });
+
+   this._stream.on('connect', function () {
+      self._handshake();
+   });
+
+   // Proxy these events from the stream as we don't need to handle them
+   var proxyEvents = [
+      'close',
+      'drain',
+      'end',
+      'error',
+      'timeout'
+   ];
+   proxyEvents.forEach(function (evt) {
+      self._stream.on(evt, function (data) {
+         self._emitter.emit(evt, data);
+      });
+   });
+}
+
+/* Protocol magic byte */
+Protocol.prototype._MAGIC_BYTE = 0x7f;
+
+/* Supported serializers */
+Protocol.prototype.SERIALIZERS = {
+   json: 1
+};
+
+/* Protocol states */
+Protocol.prototype.STATUS = {
+   CLOSED:     -1,
+   UNINITIATED: 0,
+   NEGOCIATING: 1,
+   NEGOCIATED:  2,
+   RXHEAD:      3,
+   RXDATA:      4,
+   RXPING:      5,
+   RXPONG:      6
+};
+
+/* RawSocket error codes */
+Protocol.prototype.ERRORS = {
+   0: "illegal (must not be used)",
+   1: "serializer unsupported",
+   2: "maximum message length unacceptable",
+   3: "use of reserved bits (unsupported feature)",
+   4: "maximum connection count reached"
+};
+
+/* RawSocket message types */
+Protocol.prototype.MSGTYPES = {
+   WAMP: 0x0,
+   PING: 0x1,
+   PONG: 0x2
+};
+
+/* Default protocol options */
+Protocol.prototype.DEFAULT_OPTIONS = {
+   fail_on_ping_timeout: true,
+   strict_pong: true,
+   ping_timeout: 2000,
+   autoping: 0,
+   max_len_exp: 24,
+   serializer: 'json',
+   packet_timeout: 2000
+};
+
+/**
+ * Close transport
+ *
+ * @returns {Integer} Closed state code
+ */
+Protocol.prototype.close = function () {
+   this._status = this.STATUS.CLOSED;
+   this._stream.close();
+
+   return this.STATUS.CLOSED;
+};
+
+/**
+ * Write a frame to the transport
+ *
+ * @param   {Oject}    msg      The frame to send
+ * @param   {Integer}  type     The frame type
+ * @param   {Function} callback Callback function called when frame is sent
+ */
+Protocol.prototype.write = function (msg, type, callback) {
+   type = type === undefined ? 0 : type;
+
+   // If WAMP frame, serialize the object passed
+   // Otherwise send as-is
+   if (type === this.MSGTYPES.WAMP) {
+      msg = JSON.stringify(msg);
+   }
+
+   // Get the frame size
+   var msgLen = Buffer.byteLength(msg, 'utf8');
+
+   // Check frame size against negociated max size
+   if (msgLen > Math.pow(2, this._options._peer_max_len_exp)) {
+      this._emitter.emit('error', new ProtocolError('Frame too big'));
+      return;
+   }
+
+   // Create the frame
+   var frame = new Buffer(msgLen + 4);
+
+   // Message type
+   frame.writeUInt8(type, 0);
+   // Prefix by frame size as a 24 bit integer
+   frame.writeUIntBE(msgLen, 1, 3);
+   frame.write(msg, 4);
+
+   this._stream.write(frame, callback);
+};
+
+Protocol.prototype.ping = function (payload) {
+   payload = payload || 255;
+
+   // Generate a random payload if none provided
+   if (Number.isInteger(payload)) {
+      var base = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'+
+                 '0123456789&~"#\'{([-|`_\\^@)]=},?;.:/!*$<>';
+      var len = Math.max(1, payload);
+
+      for (var i = 0; i < len; i++)
+         payload += base.charAt((Math.random() * base.length) | 0);
+   }
+
+   // Store the payload for checking against PONG packet
+   this._ping_payload = payload;
+
+   // Send the packet and register the ping timeout once done
+   return this.write(payload, this.MSGTYPES.PING, this._setupPingTimeout.bind(this));
+};
+
+Protocol.prototype._setupPingTimeout = function () {
+   if (this._options.ping_timeout) {
+      this._ping_timeout = setTimeout(this._onPingTimeout.bind(this), this._options.ping_timeout);
+   }
+};
+
+Protocol.prototype._clearPingTimeout = function () {
+   if (this._ping_timeout) {
+      clearTimeout(this._ping_timeout);
+      this._ping_timeout = null;
+   }
+};
+
+Protocol.prototype._setupAutoPing = function () {
+   this._clearAutoPing();
+
+   if (this._options.autoping) {
+      this._autoping_interval = setInterval(this.ping.bind(this), this._options.autoping);
+   }
+};
+
+Protocol.prototype._clearAutoPing = function () {
+   if (this._autoping_interval) {
+      clearInterval(this._autoping_interval);
+      this._autoping_interval = null;
+   }
+};
+
+Protocol.prototype._onPingTimeout = function () {
+   this._emitter.emit('error', new ProtocolError('PING timeout'));
+
+   if (this._options.fail_on_ping_timeout) {
+      this.close();
+   }
+};
+
+/**
+ * Handle incoming data
+ *
+ * @param {Buffer} data Incoming data
+ */
+Protocol.prototype._read = function (data) {
+   var handler, frame;
+
+   switch (this._status) {
+      case this.STATUS.CLOSED:
+      case this.STATUS.UNINITIATED:
+         this._emitter.emit('error', ProtocolError('Unexpected packet'));
+         break;
+
+      case this.STATUS.NEGOCIATING:
+         handler = this._handleHandshake;
+         frame = 4;
+         break;
+
+      case this.STATUS.NEGOCIATED:
+      case this.STATUS.RXHEAD:
+         this._status = this.STATUS.RXHEAD;
+
+         handler = this._handleHeaderPacket;
+         frame = 4;
+         break;
+
+      case this.STATUS.RXDATA:
+         handler = this._handleDataPacket;
+         frame = this._msgLen;
+         break;
+
+      case this.STATUS.RXPING:
+         handler = this._handlePingPacket;
+         frame = this._msgLen;
+         break;
+
+      case this.STATUS.RXPONG:
+         handler = this._handlePongPacket;
+         frame = this._msgLen;
+         break;
+   }
+
+   // Get a frame of the expected size
+   var chunks = this._splitBytes(data, frame);
+
+   // Protocol#_splitBytes returns null if there isn't enough data to fill the
+   // requested frame yet. Wait for more
+   if (!chunks) return;
+
+   // Call the packet handler with the frame
+   this._status = handler.call(this, chunks[0]);
+
+   // If there is more data, handle it
+   if (chunks[1].length > 0) {
+      this._read(chunks[1]);
+   }
+};
+
+/**
+ * Send the handshake packet to the peer
+ */
+Protocol.prototype._handshake = function () {
+   if (this._status !== this.STATUS.UNINITIATED) {
+      throw 'Handshake packet already sent';
+   }
+
+   // Compose handshake message
+   var gday = new Buffer(4);
+
+   // Protocol magic byte
+   gday.writeUInt8(this._MAGIC_BYTE, 0);
+   // Announce message max length and serializer
+   gday.writeUInt8((this._options.max_len_exp - 9) << 4 | this.SERIALIZERS[this._options.serializer], 1);
+   // Reserved bytes
+   gday.writeUInt8(0x00, 2);
+   gday.writeUInt8(0x00, 3);
+
+   this._stream.write(gday);
+
+   this._status = this.STATUS.NEGOCIATING;
+};
+
+/**
+ * Make a frame of the requested length using the data already buffered and the
+ * passed incoming data
+ *
+ * @param   {Buffer}  data Incoming data
+ * @param   {Integer} len  Frame size
+ *
+ * @returns {null|Array(2)} Returns null if there is'nt enough data to fill the
+ *                          frame yet, or an array containing the frame at
+ *                          index 0 and the leftover bytes at index 1 otherwise.
+ */
+Protocol.prototype._splitBytes = function (data, len) {
+   // If the buffer we have already isn't the right size, throw the data away
+   // and make a new one
+   if (len !== this._buffer.length) {
+      this._buffer = new Buffer(len);
+      this._bufferLen = 0;
+   }
+
+   // Push the data to the buffer
+   data.copy(this._buffer, this._bufferLen);
+
+   // If there still isn't enough data, increment the counter and return null
+   if (this._bufferLen + data.length < len) {
+      this._bufferLen += data.length;
+      return null;
+   // Otherwise, return the requested frame and the leftover data
+   } else {
+      var bytes = this._buffer.slice();
+      var extra = data.slice(len - this._bufferLen);
+
+      this._bufferLen = 0;
+
+      return [ bytes, extra ];
+   }
+};
+
+/**
+ * Handle the handshake response packet
+ *
+ * @param   {Buffer} int32 A 4 byte buffer containing the handshake packet
+ *
+ * @returns {Integer} The new protocol state
+ */
+Protocol.prototype._handleHandshake = function (int32) {
+   // Check magic byte
+   if (int32[0] !== this._MAGIC_BYTE) {
+      this._emitter.emit('error',  new ProtocolError(
+         'Invalid magic byte. Expected 0x' +
+         this._MAGIC_BYTE.toString(16) + ', got 0x' +
+         int32[0].toString(16))
+      );
+      return this.close();
+   }
+
+   // Check for error
+   if ((int32[1] & 0x0f) === 0) {
+      var errcode = int32[1] >> 4;
+      this._emitter.emit('error',  new ProtocolError('Peer failed handshake: ' +
+         (this.ERRORS[errcode] || '0x' + errcode.toString(16))));
+      return this.close();
+   }
+
+   // Extract max message length and serializer
+   this._options._peer_max_len_exp = (int32[1] >> 4) + 9;
+   this._options._peer_serializer = int32[1] & 0x0f;
+
+   // We only support JSON so far
+   // TODO: Support more serializers
+   if (this._options._peer_serializer !== this.SERIALIZERS.json) {
+      this._emitter.emit('error', new ProtocolError(
+         'Unsupported serializer: 0x' +
+         this._options._peer_serializer.toString(16))
+      );
+      return this.close();
+   }
+
+   // Protocol negociation complete, we're connected to the peer and ready to
+   // talk
+   this._emitter.emit('connect');
+
+   // Setup the autoping
+   this._setupAutoPing();
+
+   return this.STATUS.NEGOCIATED;
+};
+
+/**
+ * Handle a frame header
+ *
+ * @param   {Buffer} int32 A 4 byte buffer representing the packet length
+ *
+ * @returns {Integer} The new protocol state
+ */
+Protocol.prototype._handleHeaderPacket = function (int32) {
+   var type = int32[0] & 0x0f;
+
+   // Decode integer and store it
+   this._msgLen = int32.readUIntBE(1, 3);
+
+   switch (type) {
+      case this.MSGTYPES.WAMP: // WAMP frame
+         return this.STATUS.RXDATA;
+
+      case this.MSGTYPES.PING: // PING frame
+         return this.STATUS.RXPING;
+
+      case this.MSGTYPES.PONG: // PONG frame
+         return this.STATUS.RXPONG;
+
+      default:
+         this._emitter.emit('error', new ProtocolError(
+            'Invalid frame type: 0x' + status.toString(16))
+         );
+         return this.close();
+   }
+};
+
+/**
+ * Handle a data packet
+ *
+ * @param   {Buffer} buffer The received data
+ *
+ * @returns {Integer} The new protocol state
+ */
+Protocol.prototype._handleDataPacket = function (buffer) {
+   var msg;
+   // Attempt to deserialize the frame
+   // TODO: Support other serializers
+   try {
+      msg = JSON.parse(buffer.toString('utf8'));
+   } catch (e) {
+      this._emitter.emit('error',
+         new ProtocolError('Invalid JSON frame')
+      );
+      return this.STATUS.RXHEAD;
+   }
+
+   // Emit a data event for consumers
+   this._emitter.emit('data', msg);
+
+   return this.STATUS.RXHEAD;
+};
+
+/**
+ * Handle a ping packet - Reply with a  PONG and the same payload
+ *
+ * @param   {Buffer} buffer The received data
+ *
+ * @returns {Integer} The new protocol state
+ */
+Protocol.prototype._handlePingPacket = function (buffer) {
+   this.write(buffer.toString('utf8'), this.MSGTYPES.PONG);
+   return this.STATUS.RXHEAD;
+};
+
+/**
+ * Handle a pong packet
+ *
+ * @param   {Buffer} buffer The received data
+ *
+ * @returns {Integer} The new protocol state
+ */
+Protocol.prototype._handlePongPacket = function (buffer) {
+   // Clear the ping timeout (if any)
+   this._clearPingTimeout();
+
+   // If strict PONG checking is activated and the payloads don't match, throw
+   // an error and close the connection
+   if (this._options.strict_pong
+      && this._ping_payload !== buffer.toString('utf8')) {
+      this._emitter.emit('error', new ProtocolError(
+         'PONG response payload doesn\'t match PING.'
+      ));
+
+      return this.close();
+   }
+
+   return this.STATUS.RXHEAD;
+};
+
+Protocol.prototype.on = function (evt, handler) {
+   return this._emitter.on(evt, handler);
+};
+
+Protocol.prototype.once = function (evt, handler) {
+   return this._emitter.once(evt, handler);
+};
+
+Protocol.prototype.removeListener = function (evt, handler) {
+   return this._emitter.removeListener(evt, handler);
+};
+
+
+/**
+ * ProtocolError type
+ */
+var ProtocolError = exports.ProtocolError = function (msg) {
+   Error.apply(this, Array.prototype.splice.call(arguments));
+
+   Error.captureStackTrace(this, this.constructor);
+
+   this.message = msg;
+   this.name = 'ProtocolError';
+};
+ProtocolError.prototype = Object.create(Error.prototype);
+
+
+exports.Factory = Factory;
+exports.Protocol = Protocol;
+
+}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
+},{"../log.js":7,"../util.js":20,"buffer":25,"events":60,"net":24}],19:[function(require,module,exports){
 (function (global){
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -4370,78 +5186,13 @@ Factory.prototype.create = function () {
       protocol: 'wamp.2.json'
    };
 
-   //
-   // running in browser
-   //
-   if ('window' in global) {
 
-      (function () {
-
-         var websocket;
-
-         // Chrome, MSIE, newer Firefox
-         if ("WebSocket" in window) {
-            
-            if (self._options.protocols) {
-               websocket = new window.WebSocket(self._options.url, self._options.protocols);
-            } else {
-               websocket = new window.WebSocket(self._options.url);
-            }
-
-         // older versions of Firefox prefix the WebSocket object
-         } else if ("MozWebSocket" in window) {
-
-            if (self._options.protocols) {
-               websocket = new window.MozWebSocket(self._options.url, self._options.protocols);
-            } else {
-               websocket = new window.MozWebSocket(self._options.url);
-            }
-         } else {
-            throw "browser does not support WebSocket";
-         }
-
-         websocket.onmessage = function (evt) {
-            log.debug("WebSocket transport receive", evt.data);
-
-            var msg = JSON.parse(evt.data);
-            transport.onmessage(msg);
-         }
-
-         websocket.onopen = function () {
-            transport.info.url = self._options.url;
-            transport.onopen();
-         }
-
-         websocket.onclose = function (evt) {
-            var details = {
-               code: evt.code,
-               reason: evt.message,
-               wasClean: evt.wasClean
-            }
-            transport.onclose(details);
-         }
-
-         // do NOT do the following, since that will make
-         // transport.onclose() fire twice (browsers already fire
-         // websocket.onclose() for errors also)
-         //websocket.onerror = websocket.onclose;
-
-         transport.send = function (msg) {
-            var payload = JSON.stringify(msg);
-            log.debug("WebSocket transport send", payload);
-            websocket.send(payload);
-         }
-
-         transport.close = function (code, reason) {
-            websocket.close(code, reason);
-         };
-
-      })();
-
-   //
-   // running on NodeJS
-   //
-   } else {
+   // Test below used to be via the 'window' object in the browser.
+   // This fails when running in a Web worker.
+   // 
+   // running in Node.js
+   // 
+   if (global.process && global.process.versions.node) {
 
       (function () {
 
@@ -4503,6 +5254,73 @@ Factory.prototype.create = function () {
          });
 
       })();
+   // 
+   // running in the browser
+   // 
+   } else {
+      
+      (function () {
+
+         var websocket;
+
+         // Chrome, MSIE, newer Firefox
+         if ("WebSocket" in global) {
+            
+            if (self._options.protocols) {
+               websocket = new global.WebSocket(self._options.url, self._options.protocols);
+            } else {
+               websocket = new global.WebSocket(self._options.url);
+            }
+
+         // older versions of Firefox prefix the WebSocket object
+         } else if ("MozWebSocket" in global) {
+
+            if (self._options.protocols) {
+               websocket = new global.MozWebSocket(self._options.url, self._options.protocols);
+            } else {
+               websocket = new global.MozWebSocket(self._options.url);
+            }
+         } else {
+            throw "browser does not support WebSocket or WebSocket in Web workers";
+         }
+
+         websocket.onmessage = function (evt) {
+            log.debug("WebSocket transport receive", evt.data);
+
+            var msg = JSON.parse(evt.data);
+            transport.onmessage(msg);
+         }
+
+         websocket.onopen = function () {
+            transport.info.url = self._options.url;
+            transport.onopen();
+         }
+
+         websocket.onclose = function (evt) {
+            var details = {
+               code: evt.code,
+               reason: evt.message,
+               wasClean: evt.wasClean
+            }
+            transport.onclose(details);
+         }
+
+         // do NOT do the following, since that will make
+         // transport.onclose() fire twice (browsers already fire
+         // websocket.onclose() for errors also)
+         //websocket.onerror = websocket.onclose;
+
+         transport.send = function (msg) {
+            var payload = JSON.stringify(msg);
+            log.debug("WebSocket transport send", payload);
+            websocket.send(payload);
+         }
+
+         transport.close = function (code, reason) {
+            websocket.close(code, reason);
+         };
+
+      })();
    }
 
    return transport;
@@ -4513,7 +5331,7 @@ Factory.prototype.create = function () {
 exports.Factory = Factory;
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../log.js":7,"../util.js":19,"ws":81}],19:[function(require,module,exports){
+},{"../log.js":7,"../util.js":20,"ws":21}],20:[function(require,module,exports){
 (function (global){
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -4538,15 +5356,15 @@ var rand_normal = function (mean, sd) {
    // Derive a Gaussian from Uniform random variables
    // http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
    var x1, x2, rad;
- 
+
    do {
       x1 = 2 * Math.random() - 1;
       x2 = 2 * Math.random() - 1;
       rad = x1 * x1 + x2 * x2;
    } while (rad >= 1 || rad == 0);
- 
+
    var c = Math.sqrt(-2 * Math.log(rad) / rad);
- 
+
    return (mean || 0) + (x1 * c) * (sd || 1);
 };
 
@@ -4637,67 +5455,200 @@ var http_post = function (url, data, timeout) {
    }
 };
 
+/**
+ * Merge a list of objects from left to right
+ *
+ * For each object passed to the function, add to the previous object the keys
+ *     that are present in the former but not the latter. If the last argument
+ *     is a boolean, it sets whether or not to recursively merge objects.
+ *
+ * This function mutates the first passed object. To avopid this, you can pass
+ *     a new empty object as the first arg:
+ *
+ *     defaults({}, obj1, obj2, ...)
+ *
+ * @example
+ *     defaults({ a: 1 }, { a: 2, b: 2 }, { b: 3, c: 3 })
+ *     // { a: 1, b: 2, c: 3 }
+ *
+ *     defaults({ a: { k1: 1 } }, { a: { k2: 2 } })
+ *     // { a: { k1: 1 } }
+ *
+ *     defaults({ a: { k1: 1 } }, { a: { k2: 2 } })
+ *     // { a: { k1: 1 } }
+ *
+ * @param {Object} base The object to merge defaults to
+ * @param {Object} source[, ...] The default values source
+ * @param {Boolean} [recursive] Whether to recurse fro object values*
+ *     (default: false)
+ * @returns {Object} The mutated `base` object
+ */
+var defaults = function () {
+   // Return an empty object if no arguments are passed
+   if (arguments.length === 0) return {};
+
+   var base = arguments[0];
+   var recursive = false;
+   var len = arguments.length;
+
+   // Check for recursive mode param
+   if (typeof arguments[len - 1] === 'boolean') {
+      recursive = arguments[len - 1];
+      len -= 1; // Ignore the last arg
+   }
+
+   // Merging function used by Array#forEach()
+   var do_merge = function (key) {
+      var val = obj[key];
+
+      // Set if unset
+      if (!(key in base)) {
+         base[key] = val;
+      // If the value is an object and we use recursive mode, use defaults on
+      // the value
+      } else if (recursive && typeof val === 'object' &&
+                 typeof base[key] === 'object') {
+         defaults(base[key], val);
+      }
+      // Otherwise ignore the value
+   };
+
+   // Iterate over source objects
+   for (var i=1; i < len; i++) {
+      var obj = arguments[i];
+
+      // Ignore falsy values
+      if (!obj) continue;
+
+      // Require object
+      if (typeof obj !== 'object') {
+         throw new Error('Expected argument at index ' + i +
+                         ' to be an object');
+      }
+
+      // Merge keys
+      Object.keys(obj).forEach(do_merge);
+   }
+
+   // Return the mutated base object
+   return base;
+};
+
 
 
 exports.rand_normal = rand_normal;
 exports.assert = assert;
 exports.http_post = http_post;
+exports.defaults = defaults;
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./log.js":7,"when":80}],20:[function(require,module,exports){
+},{"./log.js":7,"when":87}],21:[function(require,module,exports){
+
+/**
+ * Module dependencies.
+ */
+
+var global = (function() { return this; })();
+
+/**
+ * WebSocket constructor.
+ */
+
+var WebSocket = global.WebSocket || global.MozWebSocket;
+
+/**
+ * Module exports.
+ */
+
+module.exports = WebSocket ? ws : null;
+
+/**
+ * WebSocket constructor.
+ *
+ * The third `opts` options object gets ignored in web browsers, since it's
+ * non-standard, and throws a TypeError if passed to the constructor.
+ * See: https://github.com/einaros/ws/issues/227
+ *
+ * @param {String} uri
+ * @param {Array} protocols (optional)
+ * @param {Object) opts (optional)
+ * @api public
+ */
+
+function ws(uri, protocols, opts) {
+  var instance;
+  if (protocols) {
+    instance = new WebSocket(uri, protocols);
+  } else {
+    instance = new WebSocket(uri);
+  }
+  return instance;
+}
+
+if (WebSocket) ws.prototype = WebSocket.prototype;
+
+},{}],22:[function(require,module,exports){
 module.exports={
   "_args": [
     [
-      "autobahn",
-      "C:\\kurento-tutorial-node\\kurento-rtsp2many"
+      "autobahn@^0.9.6",
+      "d:\\citysoft\\kurento-tutorial-node\\kurento-rtsp2many"
     ]
   ],
-  "_from": "autobahn@*",
-  "_id": "autobahn@0.9.6",
+  "_from": "autobahn@>=0.9.6 <0.10.0",
+  "_id": "autobahn@0.9.8",
   "_inCache": true,
   "_location": "/autobahn",
   "_npmUser": {
-    "email": "tobias.oberstein@tavendo.de",
-    "name": "oberstet"
+    "email": "alexander.goedde@tavendo.de",
+    "name": "goeddea"
   },
-  "_npmVersion": "1.3.21",
-  "_phantomChildren": {},
+  "_npmVersion": "1.4.28",
+  "_phantomChildren": {
+    "bufferutil": "1.2.1",
+    "options": "0.0.6",
+    "ultron": "1.0.2",
+    "utf-8-validate": "1.2.1"
+  },
   "_requested": {
     "name": "autobahn",
-    "raw": "autobahn",
-    "rawSpec": "",
+    "raw": "autobahn@^0.9.6",
+    "rawSpec": "^0.9.6",
     "scope": null,
-    "spec": "*",
+    "spec": ">=0.9.6 <0.10.0",
     "type": "range"
   },
   "_requiredBy": [
     "/"
   ],
-  "_resolved": "https://registry.npmjs.org/autobahn/-/autobahn-0.9.6.tgz",
-  "_shasum": "51efec0cdb056872a1c698275260f67d7a3d32e3",
+  "_resolved": "https://registry.npmjs.org/autobahn/-/autobahn-0.9.8.tgz",
+  "_shasum": "373bb8da65614c784df1be19ac512a73fde356f2",
   "_shrinkwrap": null,
-  "_spec": "autobahn",
-  "_where": "C:\\kurento-tutorial-node\\kurento-rtsp2many",
+  "_spec": "autobahn@^0.9.6",
+  "_where": "d:\\citysoft\\kurento-tutorial-node\\kurento-rtsp2many",
   "author": {
     "name": "Tavendo GmbH"
+  },
+  "browser": {
+    "lib/transport/rawsocket.js": false
   },
   "bugs": {
     "url": "https://github.com/tavendo/AutobahnJS/issues"
   },
   "dependencies": {
-    "crypto-js": ">= 3.1.2-2",
-    "when": ">= 2.8.0",
-    "ws": ">= 0.4.31"
+    "crypto-js": ">= 3.1.5",
+    "when": ">= 3.7.3",
+    "ws": ">= 0.8.0"
   },
   "description": "An implementation of The Web Application Messaging Protocol (WAMP).",
   "devDependencies": {
-    "browserify": ">= 3.28.1",
-    "nodeunit": ">= 0.8.6"
+    "browserify": ">= 11.0.1",
+    "nodeunit": ">= 0.9.1"
   },
   "directories": {},
   "dist": {
-    "shasum": "51efec0cdb056872a1c698275260f67d7a3d32e3",
-    "tarball": "http://registry.npmjs.org/autobahn/-/autobahn-0.9.6.tgz"
+    "shasum": "373bb8da65614c784df1be19ac512a73fde356f2",
+    "tarball": "http://registry.npmjs.org/autobahn/-/autobahn-0.9.8.tgz"
   },
   "homepage": "https://github.com/tavendo/AutobahnJS",
   "installable": true,
@@ -4710,6 +5661,10 @@ module.exports={
   "license": "MIT",
   "main": "index.js",
   "maintainers": [
+    {
+      "name": "goeddea",
+      "email": "alexander.goedde@tavendo.de"
+    },
     {
       "name": "oberstet",
       "email": "tobias.oberstein@tavendo.de"
@@ -4724,10 +5679,1249 @@ module.exports={
   "scripts": {
     "test": "nodeunit test/test.js"
   },
-  "version": "0.9.6"
+  "version": "0.9.8"
 }
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
+var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+;(function (exports) {
+	'use strict';
+
+  var Arr = (typeof Uint8Array !== 'undefined')
+    ? Uint8Array
+    : Array
+
+	var PLUS   = '+'.charCodeAt(0)
+	var SLASH  = '/'.charCodeAt(0)
+	var NUMBER = '0'.charCodeAt(0)
+	var LOWER  = 'a'.charCodeAt(0)
+	var UPPER  = 'A'.charCodeAt(0)
+	var PLUS_URL_SAFE = '-'.charCodeAt(0)
+	var SLASH_URL_SAFE = '_'.charCodeAt(0)
+
+	function decode (elt) {
+		var code = elt.charCodeAt(0)
+		if (code === PLUS ||
+		    code === PLUS_URL_SAFE)
+			return 62 // '+'
+		if (code === SLASH ||
+		    code === SLASH_URL_SAFE)
+			return 63 // '/'
+		if (code < NUMBER)
+			return -1 //no match
+		if (code < NUMBER + 10)
+			return code - NUMBER + 26 + 26
+		if (code < UPPER + 26)
+			return code - UPPER
+		if (code < LOWER + 26)
+			return code - LOWER + 26
+	}
+
+	function b64ToByteArray (b64) {
+		var i, j, l, tmp, placeHolders, arr
+
+		if (b64.length % 4 > 0) {
+			throw new Error('Invalid string. Length must be a multiple of 4')
+		}
+
+		// the number of equal signs (place holders)
+		// if there are two placeholders, than the two characters before it
+		// represent one byte
+		// if there is only one, then the three characters before it represent 2 bytes
+		// this is just a cheap hack to not do indexOf twice
+		var len = b64.length
+		placeHolders = '=' === b64.charAt(len - 2) ? 2 : '=' === b64.charAt(len - 1) ? 1 : 0
+
+		// base64 is 4/3 + up to two characters of the original data
+		arr = new Arr(b64.length * 3 / 4 - placeHolders)
+
+		// if there are placeholders, only get up to the last complete 4 chars
+		l = placeHolders > 0 ? b64.length - 4 : b64.length
+
+		var L = 0
+
+		function push (v) {
+			arr[L++] = v
+		}
+
+		for (i = 0, j = 0; i < l; i += 4, j += 3) {
+			tmp = (decode(b64.charAt(i)) << 18) | (decode(b64.charAt(i + 1)) << 12) | (decode(b64.charAt(i + 2)) << 6) | decode(b64.charAt(i + 3))
+			push((tmp & 0xFF0000) >> 16)
+			push((tmp & 0xFF00) >> 8)
+			push(tmp & 0xFF)
+		}
+
+		if (placeHolders === 2) {
+			tmp = (decode(b64.charAt(i)) << 2) | (decode(b64.charAt(i + 1)) >> 4)
+			push(tmp & 0xFF)
+		} else if (placeHolders === 1) {
+			tmp = (decode(b64.charAt(i)) << 10) | (decode(b64.charAt(i + 1)) << 4) | (decode(b64.charAt(i + 2)) >> 2)
+			push((tmp >> 8) & 0xFF)
+			push(tmp & 0xFF)
+		}
+
+		return arr
+	}
+
+	function uint8ToBase64 (uint8) {
+		var i,
+			extraBytes = uint8.length % 3, // if we have 1 byte left, pad 2 bytes
+			output = "",
+			temp, length
+
+		function encode (num) {
+			return lookup.charAt(num)
+		}
+
+		function tripletToBase64 (num) {
+			return encode(num >> 18 & 0x3F) + encode(num >> 12 & 0x3F) + encode(num >> 6 & 0x3F) + encode(num & 0x3F)
+		}
+
+		// go through the array every three bytes, we'll deal with trailing stuff later
+		for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
+			temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
+			output += tripletToBase64(temp)
+		}
+
+		// pad the end with zeros, but make sure to not forget the extra bytes
+		switch (extraBytes) {
+			case 1:
+				temp = uint8[uint8.length - 1]
+				output += encode(temp >> 2)
+				output += encode((temp << 4) & 0x3F)
+				output += '=='
+				break
+			case 2:
+				temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1])
+				output += encode(temp >> 10)
+				output += encode((temp >> 4) & 0x3F)
+				output += encode((temp << 2) & 0x3F)
+				output += '='
+				break
+		}
+
+		return output
+	}
+
+	exports.toByteArray = b64ToByteArray
+	exports.fromByteArray = uint8ToBase64
+}(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
+
+},{}],24:[function(require,module,exports){
+
+},{}],25:[function(require,module,exports){
+/*!
+ * The buffer module from node.js, for the browser.
+ *
+ * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @license  MIT
+ */
+
+var base64 = require('base64-js')
+var ieee754 = require('ieee754')
+
+exports.Buffer = Buffer
+exports.SlowBuffer = Buffer
+exports.INSPECT_MAX_BYTES = 50
+Buffer.poolSize = 8192
+
+/**
+ * If `Buffer._useTypedArrays`:
+ *   === true    Use Uint8Array implementation (fastest)
+ *   === false   Use Object implementation (compatible down to IE6)
+ */
+Buffer._useTypedArrays = (function () {
+  // Detect if browser supports Typed Arrays. Supported browsers are IE 10+, Firefox 4+,
+  // Chrome 7+, Safari 5.1+, Opera 11.6+, iOS 4.2+. If the browser does not support adding
+  // properties to `Uint8Array` instances, then that's the same as no `Uint8Array` support
+  // because we need to be able to add all the node Buffer API methods. This is an issue
+  // in Firefox 4-29. Now fixed: https://bugzilla.mozilla.org/show_bug.cgi?id=695438
+  try {
+    var buf = new ArrayBuffer(0)
+    var arr = new Uint8Array(buf)
+    arr.foo = function () { return 42 }
+    return 42 === arr.foo() &&
+        typeof arr.subarray === 'function' // Chrome 9-10 lack `subarray`
+  } catch (e) {
+    return false
+  }
+})()
+
+/**
+ * Class: Buffer
+ * =============
+ *
+ * The Buffer constructor returns instances of `Uint8Array` that are augmented
+ * with function properties for all the node `Buffer` API functions. We use
+ * `Uint8Array` so that square bracket notation works as expected -- it returns
+ * a single octet.
+ *
+ * By augmenting the instances, we can avoid modifying the `Uint8Array`
+ * prototype.
+ */
+function Buffer (subject, encoding, noZero) {
+  if (!(this instanceof Buffer))
+    return new Buffer(subject, encoding, noZero)
+
+  var type = typeof subject
+
+  // Workaround: node's base64 implementation allows for non-padded strings
+  // while base64-js does not.
+  if (encoding === 'base64' && type === 'string') {
+    subject = stringtrim(subject)
+    while (subject.length % 4 !== 0) {
+      subject = subject + '='
+    }
+  }
+
+  // Find the length
+  var length
+  if (type === 'number')
+    length = coerce(subject)
+  else if (type === 'string')
+    length = Buffer.byteLength(subject, encoding)
+  else if (type === 'object')
+    length = coerce(subject.length) // assume that object is array-like
+  else
+    throw new Error('First argument needs to be a number, array or string.')
+
+  var buf
+  if (Buffer._useTypedArrays) {
+    // Preferred: Return an augmented `Uint8Array` instance for best performance
+    buf = Buffer._augment(new Uint8Array(length))
+  } else {
+    // Fallback: Return THIS instance of Buffer (created by `new`)
+    buf = this
+    buf.length = length
+    buf._isBuffer = true
+  }
+
+  var i
+  if (Buffer._useTypedArrays && typeof subject.byteLength === 'number') {
+    // Speed optimization -- use set if we're copying from a typed array
+    buf._set(subject)
+  } else if (isArrayish(subject)) {
+    // Treat array-ish objects as a byte array
+    for (i = 0; i < length; i++) {
+      if (Buffer.isBuffer(subject))
+        buf[i] = subject.readUInt8(i)
+      else
+        buf[i] = subject[i]
+    }
+  } else if (type === 'string') {
+    buf.write(subject, 0, encoding)
+  } else if (type === 'number' && !Buffer._useTypedArrays && !noZero) {
+    for (i = 0; i < length; i++) {
+      buf[i] = 0
+    }
+  }
+
+  return buf
+}
+
+// STATIC METHODS
+// ==============
+
+Buffer.isEncoding = function (encoding) {
+  switch (String(encoding).toLowerCase()) {
+    case 'hex':
+    case 'utf8':
+    case 'utf-8':
+    case 'ascii':
+    case 'binary':
+    case 'base64':
+    case 'raw':
+    case 'ucs2':
+    case 'ucs-2':
+    case 'utf16le':
+    case 'utf-16le':
+      return true
+    default:
+      return false
+  }
+}
+
+Buffer.isBuffer = function (b) {
+  return !!(b !== null && b !== undefined && b._isBuffer)
+}
+
+Buffer.byteLength = function (str, encoding) {
+  var ret
+  str = str + ''
+  switch (encoding || 'utf8') {
+    case 'hex':
+      ret = str.length / 2
+      break
+    case 'utf8':
+    case 'utf-8':
+      ret = utf8ToBytes(str).length
+      break
+    case 'ascii':
+    case 'binary':
+    case 'raw':
+      ret = str.length
+      break
+    case 'base64':
+      ret = base64ToBytes(str).length
+      break
+    case 'ucs2':
+    case 'ucs-2':
+    case 'utf16le':
+    case 'utf-16le':
+      ret = str.length * 2
+      break
+    default:
+      throw new Error('Unknown encoding')
+  }
+  return ret
+}
+
+Buffer.concat = function (list, totalLength) {
+  assert(isArray(list), 'Usage: Buffer.concat(list, [totalLength])\n' +
+      'list should be an Array.')
+
+  if (list.length === 0) {
+    return new Buffer(0)
+  } else if (list.length === 1) {
+    return list[0]
+  }
+
+  var i
+  if (typeof totalLength !== 'number') {
+    totalLength = 0
+    for (i = 0; i < list.length; i++) {
+      totalLength += list[i].length
+    }
+  }
+
+  var buf = new Buffer(totalLength)
+  var pos = 0
+  for (i = 0; i < list.length; i++) {
+    var item = list[i]
+    item.copy(buf, pos)
+    pos += item.length
+  }
+  return buf
+}
+
+// BUFFER INSTANCE METHODS
+// =======================
+
+function _hexWrite (buf, string, offset, length) {
+  offset = Number(offset) || 0
+  var remaining = buf.length - offset
+  if (!length) {
+    length = remaining
+  } else {
+    length = Number(length)
+    if (length > remaining) {
+      length = remaining
+    }
+  }
+
+  // must be an even number of digits
+  var strLen = string.length
+  assert(strLen % 2 === 0, 'Invalid hex string')
+
+  if (length > strLen / 2) {
+    length = strLen / 2
+  }
+  for (var i = 0; i < length; i++) {
+    var byte = parseInt(string.substr(i * 2, 2), 16)
+    assert(!isNaN(byte), 'Invalid hex string')
+    buf[offset + i] = byte
+  }
+  Buffer._charsWritten = i * 2
+  return i
+}
+
+function _utf8Write (buf, string, offset, length) {
+  var charsWritten = Buffer._charsWritten =
+    blitBuffer(utf8ToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+function _asciiWrite (buf, string, offset, length) {
+  var charsWritten = Buffer._charsWritten =
+    blitBuffer(asciiToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+function _binaryWrite (buf, string, offset, length) {
+  return _asciiWrite(buf, string, offset, length)
+}
+
+function _base64Write (buf, string, offset, length) {
+  var charsWritten = Buffer._charsWritten =
+    blitBuffer(base64ToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+function _utf16leWrite (buf, string, offset, length) {
+  var charsWritten = Buffer._charsWritten =
+    blitBuffer(utf16leToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+Buffer.prototype.write = function (string, offset, length, encoding) {
+  // Support both (string, offset, length, encoding)
+  // and the legacy (string, encoding, offset, length)
+  if (isFinite(offset)) {
+    if (!isFinite(length)) {
+      encoding = length
+      length = undefined
+    }
+  } else {  // legacy
+    var swap = encoding
+    encoding = offset
+    offset = length
+    length = swap
+  }
+
+  offset = Number(offset) || 0
+  var remaining = this.length - offset
+  if (!length) {
+    length = remaining
+  } else {
+    length = Number(length)
+    if (length > remaining) {
+      length = remaining
+    }
+  }
+  encoding = String(encoding || 'utf8').toLowerCase()
+
+  var ret
+  switch (encoding) {
+    case 'hex':
+      ret = _hexWrite(this, string, offset, length)
+      break
+    case 'utf8':
+    case 'utf-8':
+      ret = _utf8Write(this, string, offset, length)
+      break
+    case 'ascii':
+      ret = _asciiWrite(this, string, offset, length)
+      break
+    case 'binary':
+      ret = _binaryWrite(this, string, offset, length)
+      break
+    case 'base64':
+      ret = _base64Write(this, string, offset, length)
+      break
+    case 'ucs2':
+    case 'ucs-2':
+    case 'utf16le':
+    case 'utf-16le':
+      ret = _utf16leWrite(this, string, offset, length)
+      break
+    default:
+      throw new Error('Unknown encoding')
+  }
+  return ret
+}
+
+Buffer.prototype.toString = function (encoding, start, end) {
+  var self = this
+
+  encoding = String(encoding || 'utf8').toLowerCase()
+  start = Number(start) || 0
+  end = (end !== undefined)
+    ? Number(end)
+    : end = self.length
+
+  // Fastpath empty strings
+  if (end === start)
+    return ''
+
+  var ret
+  switch (encoding) {
+    case 'hex':
+      ret = _hexSlice(self, start, end)
+      break
+    case 'utf8':
+    case 'utf-8':
+      ret = _utf8Slice(self, start, end)
+      break
+    case 'ascii':
+      ret = _asciiSlice(self, start, end)
+      break
+    case 'binary':
+      ret = _binarySlice(self, start, end)
+      break
+    case 'base64':
+      ret = _base64Slice(self, start, end)
+      break
+    case 'ucs2':
+    case 'ucs-2':
+    case 'utf16le':
+    case 'utf-16le':
+      ret = _utf16leSlice(self, start, end)
+      break
+    default:
+      throw new Error('Unknown encoding')
+  }
+  return ret
+}
+
+Buffer.prototype.toJSON = function () {
+  return {
+    type: 'Buffer',
+    data: Array.prototype.slice.call(this._arr || this, 0)
+  }
+}
+
+// copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
+Buffer.prototype.copy = function (target, target_start, start, end) {
+  var source = this
+
+  if (!start) start = 0
+  if (!end && end !== 0) end = this.length
+  if (!target_start) target_start = 0
+
+  // Copy 0 bytes; we're done
+  if (end === start) return
+  if (target.length === 0 || source.length === 0) return
+
+  // Fatal error conditions
+  assert(end >= start, 'sourceEnd < sourceStart')
+  assert(target_start >= 0 && target_start < target.length,
+      'targetStart out of bounds')
+  assert(start >= 0 && start < source.length, 'sourceStart out of bounds')
+  assert(end >= 0 && end <= source.length, 'sourceEnd out of bounds')
+
+  // Are we oob?
+  if (end > this.length)
+    end = this.length
+  if (target.length - target_start < end - start)
+    end = target.length - target_start + start
+
+  var len = end - start
+
+  if (len < 100 || !Buffer._useTypedArrays) {
+    for (var i = 0; i < len; i++)
+      target[i + target_start] = this[i + start]
+  } else {
+    target._set(this.subarray(start, start + len), target_start)
+  }
+}
+
+function _base64Slice (buf, start, end) {
+  if (start === 0 && end === buf.length) {
+    return base64.fromByteArray(buf)
+  } else {
+    return base64.fromByteArray(buf.slice(start, end))
+  }
+}
+
+function _utf8Slice (buf, start, end) {
+  var res = ''
+  var tmp = ''
+  end = Math.min(buf.length, end)
+
+  for (var i = start; i < end; i++) {
+    if (buf[i] <= 0x7F) {
+      res += decodeUtf8Char(tmp) + String.fromCharCode(buf[i])
+      tmp = ''
+    } else {
+      tmp += '%' + buf[i].toString(16)
+    }
+  }
+
+  return res + decodeUtf8Char(tmp)
+}
+
+function _asciiSlice (buf, start, end) {
+  var ret = ''
+  end = Math.min(buf.length, end)
+
+  for (var i = start; i < end; i++)
+    ret += String.fromCharCode(buf[i])
+  return ret
+}
+
+function _binarySlice (buf, start, end) {
+  return _asciiSlice(buf, start, end)
+}
+
+function _hexSlice (buf, start, end) {
+  var len = buf.length
+
+  if (!start || start < 0) start = 0
+  if (!end || end < 0 || end > len) end = len
+
+  var out = ''
+  for (var i = start; i < end; i++) {
+    out += toHex(buf[i])
+  }
+  return out
+}
+
+function _utf16leSlice (buf, start, end) {
+  var bytes = buf.slice(start, end)
+  var res = ''
+  for (var i = 0; i < bytes.length; i += 2) {
+    res += String.fromCharCode(bytes[i] + bytes[i+1] * 256)
+  }
+  return res
+}
+
+Buffer.prototype.slice = function (start, end) {
+  var len = this.length
+  start = clamp(start, len, 0)
+  end = clamp(end, len, len)
+
+  if (Buffer._useTypedArrays) {
+    return Buffer._augment(this.subarray(start, end))
+  } else {
+    var sliceLen = end - start
+    var newBuf = new Buffer(sliceLen, undefined, true)
+    for (var i = 0; i < sliceLen; i++) {
+      newBuf[i] = this[i + start]
+    }
+    return newBuf
+  }
+}
+
+// `get` will be removed in Node 0.13+
+Buffer.prototype.get = function (offset) {
+  console.log('.get() is deprecated. Access using array indexes instead.')
+  return this.readUInt8(offset)
+}
+
+// `set` will be removed in Node 0.13+
+Buffer.prototype.set = function (v, offset) {
+  console.log('.set() is deprecated. Access using array indexes instead.')
+  return this.writeUInt8(v, offset)
+}
+
+Buffer.prototype.readUInt8 = function (offset, noAssert) {
+  if (!noAssert) {
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset < this.length, 'Trying to read beyond buffer length')
+  }
+
+  if (offset >= this.length)
+    return
+
+  return this[offset]
+}
+
+function _readUInt16 (buf, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 1 < buf.length, 'Trying to read beyond buffer length')
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  var val
+  if (littleEndian) {
+    val = buf[offset]
+    if (offset + 1 < len)
+      val |= buf[offset + 1] << 8
+  } else {
+    val = buf[offset] << 8
+    if (offset + 1 < len)
+      val |= buf[offset + 1]
+  }
+  return val
+}
+
+Buffer.prototype.readUInt16LE = function (offset, noAssert) {
+  return _readUInt16(this, offset, true, noAssert)
+}
+
+Buffer.prototype.readUInt16BE = function (offset, noAssert) {
+  return _readUInt16(this, offset, false, noAssert)
+}
+
+function _readUInt32 (buf, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 3 < buf.length, 'Trying to read beyond buffer length')
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  var val
+  if (littleEndian) {
+    if (offset + 2 < len)
+      val = buf[offset + 2] << 16
+    if (offset + 1 < len)
+      val |= buf[offset + 1] << 8
+    val |= buf[offset]
+    if (offset + 3 < len)
+      val = val + (buf[offset + 3] << 24 >>> 0)
+  } else {
+    if (offset + 1 < len)
+      val = buf[offset + 1] << 16
+    if (offset + 2 < len)
+      val |= buf[offset + 2] << 8
+    if (offset + 3 < len)
+      val |= buf[offset + 3]
+    val = val + (buf[offset] << 24 >>> 0)
+  }
+  return val
+}
+
+Buffer.prototype.readUInt32LE = function (offset, noAssert) {
+  return _readUInt32(this, offset, true, noAssert)
+}
+
+Buffer.prototype.readUInt32BE = function (offset, noAssert) {
+  return _readUInt32(this, offset, false, noAssert)
+}
+
+Buffer.prototype.readInt8 = function (offset, noAssert) {
+  if (!noAssert) {
+    assert(offset !== undefined && offset !== null,
+        'missing offset')
+    assert(offset < this.length, 'Trying to read beyond buffer length')
+  }
+
+  if (offset >= this.length)
+    return
+
+  var neg = this[offset] & 0x80
+  if (neg)
+    return (0xff - this[offset] + 1) * -1
+  else
+    return this[offset]
+}
+
+function _readInt16 (buf, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 1 < buf.length, 'Trying to read beyond buffer length')
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  var val = _readUInt16(buf, offset, littleEndian, true)
+  var neg = val & 0x8000
+  if (neg)
+    return (0xffff - val + 1) * -1
+  else
+    return val
+}
+
+Buffer.prototype.readInt16LE = function (offset, noAssert) {
+  return _readInt16(this, offset, true, noAssert)
+}
+
+Buffer.prototype.readInt16BE = function (offset, noAssert) {
+  return _readInt16(this, offset, false, noAssert)
+}
+
+function _readInt32 (buf, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 3 < buf.length, 'Trying to read beyond buffer length')
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  var val = _readUInt32(buf, offset, littleEndian, true)
+  var neg = val & 0x80000000
+  if (neg)
+    return (0xffffffff - val + 1) * -1
+  else
+    return val
+}
+
+Buffer.prototype.readInt32LE = function (offset, noAssert) {
+  return _readInt32(this, offset, true, noAssert)
+}
+
+Buffer.prototype.readInt32BE = function (offset, noAssert) {
+  return _readInt32(this, offset, false, noAssert)
+}
+
+function _readFloat (buf, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset + 3 < buf.length, 'Trying to read beyond buffer length')
+  }
+
+  return ieee754.read(buf, offset, littleEndian, 23, 4)
+}
+
+Buffer.prototype.readFloatLE = function (offset, noAssert) {
+  return _readFloat(this, offset, true, noAssert)
+}
+
+Buffer.prototype.readFloatBE = function (offset, noAssert) {
+  return _readFloat(this, offset, false, noAssert)
+}
+
+function _readDouble (buf, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset + 7 < buf.length, 'Trying to read beyond buffer length')
+  }
+
+  return ieee754.read(buf, offset, littleEndian, 52, 8)
+}
+
+Buffer.prototype.readDoubleLE = function (offset, noAssert) {
+  return _readDouble(this, offset, true, noAssert)
+}
+
+Buffer.prototype.readDoubleBE = function (offset, noAssert) {
+  return _readDouble(this, offset, false, noAssert)
+}
+
+Buffer.prototype.writeUInt8 = function (value, offset, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset < this.length, 'trying to write beyond buffer length')
+    verifuint(value, 0xff)
+  }
+
+  if (offset >= this.length) return
+
+  this[offset] = value
+}
+
+function _writeUInt16 (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 1 < buf.length, 'trying to write beyond buffer length')
+    verifuint(value, 0xffff)
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  for (var i = 0, j = Math.min(len - offset, 2); i < j; i++) {
+    buf[offset + i] =
+        (value & (0xff << (8 * (littleEndian ? i : 1 - i)))) >>>
+            (littleEndian ? i : 1 - i) * 8
+  }
+}
+
+Buffer.prototype.writeUInt16LE = function (value, offset, noAssert) {
+  _writeUInt16(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeUInt16BE = function (value, offset, noAssert) {
+  _writeUInt16(this, value, offset, false, noAssert)
+}
+
+function _writeUInt32 (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 3 < buf.length, 'trying to write beyond buffer length')
+    verifuint(value, 0xffffffff)
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  for (var i = 0, j = Math.min(len - offset, 4); i < j; i++) {
+    buf[offset + i] =
+        (value >>> (littleEndian ? i : 3 - i) * 8) & 0xff
+  }
+}
+
+Buffer.prototype.writeUInt32LE = function (value, offset, noAssert) {
+  _writeUInt32(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeUInt32BE = function (value, offset, noAssert) {
+  _writeUInt32(this, value, offset, false, noAssert)
+}
+
+Buffer.prototype.writeInt8 = function (value, offset, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset < this.length, 'Trying to write beyond buffer length')
+    verifsint(value, 0x7f, -0x80)
+  }
+
+  if (offset >= this.length)
+    return
+
+  if (value >= 0)
+    this.writeUInt8(value, offset, noAssert)
+  else
+    this.writeUInt8(0xff + value + 1, offset, noAssert)
+}
+
+function _writeInt16 (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 1 < buf.length, 'Trying to write beyond buffer length')
+    verifsint(value, 0x7fff, -0x8000)
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  if (value >= 0)
+    _writeUInt16(buf, value, offset, littleEndian, noAssert)
+  else
+    _writeUInt16(buf, 0xffff + value + 1, offset, littleEndian, noAssert)
+}
+
+Buffer.prototype.writeInt16LE = function (value, offset, noAssert) {
+  _writeInt16(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeInt16BE = function (value, offset, noAssert) {
+  _writeInt16(this, value, offset, false, noAssert)
+}
+
+function _writeInt32 (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 3 < buf.length, 'Trying to write beyond buffer length')
+    verifsint(value, 0x7fffffff, -0x80000000)
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  if (value >= 0)
+    _writeUInt32(buf, value, offset, littleEndian, noAssert)
+  else
+    _writeUInt32(buf, 0xffffffff + value + 1, offset, littleEndian, noAssert)
+}
+
+Buffer.prototype.writeInt32LE = function (value, offset, noAssert) {
+  _writeInt32(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeInt32BE = function (value, offset, noAssert) {
+  _writeInt32(this, value, offset, false, noAssert)
+}
+
+function _writeFloat (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 3 < buf.length, 'Trying to write beyond buffer length')
+    verifIEEE754(value, 3.4028234663852886e+38, -3.4028234663852886e+38)
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  ieee754.write(buf, value, offset, littleEndian, 23, 4)
+}
+
+Buffer.prototype.writeFloatLE = function (value, offset, noAssert) {
+  _writeFloat(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeFloatBE = function (value, offset, noAssert) {
+  _writeFloat(this, value, offset, false, noAssert)
+}
+
+function _writeDouble (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert) {
+    assert(value !== undefined && value !== null, 'missing value')
+    assert(typeof littleEndian === 'boolean', 'missing or invalid endian')
+    assert(offset !== undefined && offset !== null, 'missing offset')
+    assert(offset + 7 < buf.length,
+        'Trying to write beyond buffer length')
+    verifIEEE754(value, 1.7976931348623157E+308, -1.7976931348623157E+308)
+  }
+
+  var len = buf.length
+  if (offset >= len)
+    return
+
+  ieee754.write(buf, value, offset, littleEndian, 52, 8)
+}
+
+Buffer.prototype.writeDoubleLE = function (value, offset, noAssert) {
+  _writeDouble(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeDoubleBE = function (value, offset, noAssert) {
+  _writeDouble(this, value, offset, false, noAssert)
+}
+
+// fill(value, start=0, end=buffer.length)
+Buffer.prototype.fill = function (value, start, end) {
+  if (!value) value = 0
+  if (!start) start = 0
+  if (!end) end = this.length
+
+  if (typeof value === 'string') {
+    value = value.charCodeAt(0)
+  }
+
+  assert(typeof value === 'number' && !isNaN(value), 'value is not a number')
+  assert(end >= start, 'end < start')
+
+  // Fill 0 bytes; we're done
+  if (end === start) return
+  if (this.length === 0) return
+
+  assert(start >= 0 && start < this.length, 'start out of bounds')
+  assert(end >= 0 && end <= this.length, 'end out of bounds')
+
+  for (var i = start; i < end; i++) {
+    this[i] = value
+  }
+}
+
+Buffer.prototype.inspect = function () {
+  var out = []
+  var len = this.length
+  for (var i = 0; i < len; i++) {
+    out[i] = toHex(this[i])
+    if (i === exports.INSPECT_MAX_BYTES) {
+      out[i + 1] = '...'
+      break
+    }
+  }
+  return '<Buffer ' + out.join(' ') + '>'
+}
+
+/**
+ * Creates a new `ArrayBuffer` with the *copied* memory of the buffer instance.
+ * Added in Node 0.12. Only available in browsers that support ArrayBuffer.
+ */
+Buffer.prototype.toArrayBuffer = function () {
+  if (typeof Uint8Array !== 'undefined') {
+    if (Buffer._useTypedArrays) {
+      return (new Buffer(this)).buffer
+    } else {
+      var buf = new Uint8Array(this.length)
+      for (var i = 0, len = buf.length; i < len; i += 1)
+        buf[i] = this[i]
+      return buf.buffer
+    }
+  } else {
+    throw new Error('Buffer.toArrayBuffer not supported in this browser')
+  }
+}
+
+// HELPER FUNCTIONS
+// ================
+
+function stringtrim (str) {
+  if (str.trim) return str.trim()
+  return str.replace(/^\s+|\s+$/g, '')
+}
+
+var BP = Buffer.prototype
+
+/**
+ * Augment a Uint8Array *instance* (not the Uint8Array class!) with Buffer methods
+ */
+Buffer._augment = function (arr) {
+  arr._isBuffer = true
+
+  // save reference to original Uint8Array get/set methods before overwriting
+  arr._get = arr.get
+  arr._set = arr.set
+
+  // deprecated, will be removed in node 0.13+
+  arr.get = BP.get
+  arr.set = BP.set
+
+  arr.write = BP.write
+  arr.toString = BP.toString
+  arr.toLocaleString = BP.toString
+  arr.toJSON = BP.toJSON
+  arr.copy = BP.copy
+  arr.slice = BP.slice
+  arr.readUInt8 = BP.readUInt8
+  arr.readUInt16LE = BP.readUInt16LE
+  arr.readUInt16BE = BP.readUInt16BE
+  arr.readUInt32LE = BP.readUInt32LE
+  arr.readUInt32BE = BP.readUInt32BE
+  arr.readInt8 = BP.readInt8
+  arr.readInt16LE = BP.readInt16LE
+  arr.readInt16BE = BP.readInt16BE
+  arr.readInt32LE = BP.readInt32LE
+  arr.readInt32BE = BP.readInt32BE
+  arr.readFloatLE = BP.readFloatLE
+  arr.readFloatBE = BP.readFloatBE
+  arr.readDoubleLE = BP.readDoubleLE
+  arr.readDoubleBE = BP.readDoubleBE
+  arr.writeUInt8 = BP.writeUInt8
+  arr.writeUInt16LE = BP.writeUInt16LE
+  arr.writeUInt16BE = BP.writeUInt16BE
+  arr.writeUInt32LE = BP.writeUInt32LE
+  arr.writeUInt32BE = BP.writeUInt32BE
+  arr.writeInt8 = BP.writeInt8
+  arr.writeInt16LE = BP.writeInt16LE
+  arr.writeInt16BE = BP.writeInt16BE
+  arr.writeInt32LE = BP.writeInt32LE
+  arr.writeInt32BE = BP.writeInt32BE
+  arr.writeFloatLE = BP.writeFloatLE
+  arr.writeFloatBE = BP.writeFloatBE
+  arr.writeDoubleLE = BP.writeDoubleLE
+  arr.writeDoubleBE = BP.writeDoubleBE
+  arr.fill = BP.fill
+  arr.inspect = BP.inspect
+  arr.toArrayBuffer = BP.toArrayBuffer
+
+  return arr
+}
+
+// slice(start, end)
+function clamp (index, len, defaultValue) {
+  if (typeof index !== 'number') return defaultValue
+  index = ~~index;  // Coerce to integer.
+  if (index >= len) return len
+  if (index >= 0) return index
+  index += len
+  if (index >= 0) return index
+  return 0
+}
+
+function coerce (length) {
+  // Coerce length to a number (possibly NaN), round up
+  // in case it's fractional (e.g. 123.456) then do a
+  // double negate to coerce a NaN to 0. Easy, right?
+  length = ~~Math.ceil(+length)
+  return length < 0 ? 0 : length
+}
+
+function isArray (subject) {
+  return (Array.isArray || function (subject) {
+    return Object.prototype.toString.call(subject) === '[object Array]'
+  })(subject)
+}
+
+function isArrayish (subject) {
+  return isArray(subject) || Buffer.isBuffer(subject) ||
+      subject && typeof subject === 'object' &&
+      typeof subject.length === 'number'
+}
+
+function toHex (n) {
+  if (n < 16) return '0' + n.toString(16)
+  return n.toString(16)
+}
+
+function utf8ToBytes (str) {
+  var byteArray = []
+  for (var i = 0; i < str.length; i++) {
+    var b = str.charCodeAt(i)
+    if (b <= 0x7F)
+      byteArray.push(str.charCodeAt(i))
+    else {
+      var start = i
+      if (b >= 0xD800 && b <= 0xDFFF) i++
+      var h = encodeURIComponent(str.slice(start, i+1)).substr(1).split('%')
+      for (var j = 0; j < h.length; j++)
+        byteArray.push(parseInt(h[j], 16))
+    }
+  }
+  return byteArray
+}
+
+function asciiToBytes (str) {
+  var byteArray = []
+  for (var i = 0; i < str.length; i++) {
+    // Node's code seems to be doing this and not & 0x7F..
+    byteArray.push(str.charCodeAt(i) & 0xFF)
+  }
+  return byteArray
+}
+
+function utf16leToBytes (str) {
+  var c, hi, lo
+  var byteArray = []
+  for (var i = 0; i < str.length; i++) {
+    c = str.charCodeAt(i)
+    hi = c >> 8
+    lo = c % 256
+    byteArray.push(lo)
+    byteArray.push(hi)
+  }
+
+  return byteArray
+}
+
+function base64ToBytes (str) {
+  return base64.toByteArray(str)
+}
+
+function blitBuffer (src, dst, offset, length) {
+  var pos
+  for (var i = 0; i < length; i++) {
+    if ((i + offset >= dst.length) || (i >= src.length))
+      break
+    dst[i + offset] = src[i]
+  }
+  return i
+}
+
+function decodeUtf8Char (str) {
+  try {
+    return decodeURIComponent(str)
+  } catch (err) {
+    return String.fromCharCode(0xFFFD) // UTF 8 invalid char
+  }
+}
+
+/*
+ * We have to make sure that the value is a valid integer. This means that it
+ * is non-negative. It has no fractional component and that it does not
+ * exceed the maximum allowed value.
+ */
+function verifuint (value, max) {
+  assert(typeof value === 'number', 'cannot write a non-number as a number')
+  assert(value >= 0, 'specified a negative value for writing an unsigned value')
+  assert(value <= max, 'value is larger than maximum value for type')
+  assert(Math.floor(value) === value, 'value has a fractional component')
+}
+
+function verifsint (value, max, min) {
+  assert(typeof value === 'number', 'cannot write a non-number as a number')
+  assert(value <= max, 'value larger than maximum allowed value')
+  assert(value >= min, 'value smaller than minimum allowed value')
+  assert(Math.floor(value) === value, 'value has a fractional component')
+}
+
+function verifIEEE754 (value, max, min) {
+  assert(typeof value === 'number', 'cannot write a non-number as a number')
+  assert(value <= max, 'value larger than maximum allowed value')
+  assert(value >= min, 'value smaller than minimum allowed value')
+}
+
+function assert (test, message) {
+  if (!test) throw new Error(message || 'Failed assertion')
+}
+
+},{"base64-js":23,"ieee754":61}],26:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -4955,7 +7149,7 @@ module.exports={
 	return CryptoJS.AES;
 
 }));
-},{"./cipher-core":22,"./core":23,"./enc-base64":24,"./evpkdf":26,"./md5":31}],22:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28,"./enc-base64":29,"./evpkdf":31,"./md5":36}],27:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -5831,7 +8025,7 @@ module.exports={
 
 
 }));
-},{"./core":23}],23:[function(require,module,exports){
+},{"./core":28}],28:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -6574,7 +8768,7 @@ module.exports={
 	return CryptoJS;
 
 }));
-},{}],24:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -6698,7 +8892,7 @@ module.exports={
 	return CryptoJS.enc.Base64;
 
 }));
-},{"./core":23}],25:[function(require,module,exports){
+},{"./core":28}],30:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -6848,7 +9042,7 @@ module.exports={
 	return CryptoJS.enc.Utf16;
 
 }));
-},{"./core":23}],26:[function(require,module,exports){
+},{"./core":28}],31:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -6981,7 +9175,7 @@ module.exports={
 	return CryptoJS.EvpKDF;
 
 }));
-},{"./core":23,"./hmac":28,"./sha1":47}],27:[function(require,module,exports){
+},{"./core":28,"./hmac":33,"./sha1":52}],32:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7048,7 +9242,7 @@ module.exports={
 	return CryptoJS.format.Hex;
 
 }));
-},{"./cipher-core":22,"./core":23}],28:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],33:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7192,7 +9386,7 @@ module.exports={
 
 
 }));
-},{"./core":23}],29:[function(require,module,exports){
+},{"./core":28}],34:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7211,7 +9405,7 @@ module.exports={
 	return CryptoJS;
 
 }));
-},{"./aes":21,"./cipher-core":22,"./core":23,"./enc-base64":24,"./enc-utf16":25,"./evpkdf":26,"./format-hex":27,"./hmac":28,"./lib-typedarrays":30,"./md5":31,"./mode-cfb":32,"./mode-ctr":34,"./mode-ctr-gladman":33,"./mode-ecb":35,"./mode-ofb":36,"./pad-ansix923":37,"./pad-iso10126":38,"./pad-iso97971":39,"./pad-nopadding":40,"./pad-zeropadding":41,"./pbkdf2":42,"./rabbit":44,"./rabbit-legacy":43,"./rc4":45,"./ripemd160":46,"./sha1":47,"./sha224":48,"./sha256":49,"./sha3":50,"./sha384":51,"./sha512":52,"./tripledes":53,"./x64-core":54}],30:[function(require,module,exports){
+},{"./aes":26,"./cipher-core":27,"./core":28,"./enc-base64":29,"./enc-utf16":30,"./evpkdf":31,"./format-hex":32,"./hmac":33,"./lib-typedarrays":35,"./md5":36,"./mode-cfb":37,"./mode-ctr":39,"./mode-ctr-gladman":38,"./mode-ecb":40,"./mode-ofb":41,"./pad-ansix923":42,"./pad-iso10126":43,"./pad-iso97971":44,"./pad-nopadding":45,"./pad-zeropadding":46,"./pbkdf2":47,"./rabbit":49,"./rabbit-legacy":48,"./rc4":50,"./ripemd160":51,"./sha1":52,"./sha224":53,"./sha256":54,"./sha3":55,"./sha384":56,"./sha512":57,"./tripledes":58,"./x64-core":59}],35:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7288,7 +9482,7 @@ module.exports={
 	return CryptoJS.lib.WordArray;
 
 }));
-},{"./core":23}],31:[function(require,module,exports){
+},{"./core":28}],36:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7557,7 +9751,7 @@ module.exports={
 	return CryptoJS.MD5;
 
 }));
-},{"./core":23}],32:[function(require,module,exports){
+},{"./core":28}],37:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7636,7 +9830,7 @@ module.exports={
 	return CryptoJS.mode.CFB;
 
 }));
-},{"./cipher-core":22,"./core":23}],33:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],38:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7753,7 +9947,7 @@ module.exports={
 	return CryptoJS.mode.CTRGladman;
 
 }));
-},{"./cipher-core":22,"./core":23}],34:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],39:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7812,7 +10006,7 @@ module.exports={
 	return CryptoJS.mode.CTR;
 
 }));
-},{"./cipher-core":22,"./core":23}],35:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],40:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7853,7 +10047,7 @@ module.exports={
 	return CryptoJS.mode.ECB;
 
 }));
-},{"./cipher-core":22,"./core":23}],36:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],41:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7908,7 +10102,7 @@ module.exports={
 	return CryptoJS.mode.OFB;
 
 }));
-},{"./cipher-core":22,"./core":23}],37:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],42:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -7958,7 +10152,7 @@ module.exports={
 	return CryptoJS.pad.Ansix923;
 
 }));
-},{"./cipher-core":22,"./core":23}],38:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],43:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8003,7 +10197,7 @@ module.exports={
 	return CryptoJS.pad.Iso10126;
 
 }));
-},{"./cipher-core":22,"./core":23}],39:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],44:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8044,7 +10238,7 @@ module.exports={
 	return CryptoJS.pad.Iso97971;
 
 }));
-},{"./cipher-core":22,"./core":23}],40:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],45:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8075,7 +10269,7 @@ module.exports={
 	return CryptoJS.pad.NoPadding;
 
 }));
-},{"./cipher-core":22,"./core":23}],41:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],46:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8121,7 +10315,7 @@ module.exports={
 	return CryptoJS.pad.ZeroPadding;
 
 }));
-},{"./cipher-core":22,"./core":23}],42:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28}],47:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8267,7 +10461,7 @@ module.exports={
 	return CryptoJS.PBKDF2;
 
 }));
-},{"./core":23,"./hmac":28,"./sha1":47}],43:[function(require,module,exports){
+},{"./core":28,"./hmac":33,"./sha1":52}],48:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8458,7 +10652,7 @@ module.exports={
 	return CryptoJS.RabbitLegacy;
 
 }));
-},{"./cipher-core":22,"./core":23,"./enc-base64":24,"./evpkdf":26,"./md5":31}],44:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28,"./enc-base64":29,"./evpkdf":31,"./md5":36}],49:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8651,7 +10845,7 @@ module.exports={
 	return CryptoJS.Rabbit;
 
 }));
-},{"./cipher-core":22,"./core":23,"./enc-base64":24,"./evpkdf":26,"./md5":31}],45:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28,"./enc-base64":29,"./evpkdf":31,"./md5":36}],50:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -8791,7 +10985,7 @@ module.exports={
 	return CryptoJS.RC4;
 
 }));
-},{"./cipher-core":22,"./core":23,"./enc-base64":24,"./evpkdf":26,"./md5":31}],46:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28,"./enc-base64":29,"./evpkdf":31,"./md5":36}],51:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -9059,7 +11253,7 @@ module.exports={
 	return CryptoJS.RIPEMD160;
 
 }));
-},{"./core":23}],47:[function(require,module,exports){
+},{"./core":28}],52:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -9210,7 +11404,7 @@ module.exports={
 	return CryptoJS.SHA1;
 
 }));
-},{"./core":23}],48:[function(require,module,exports){
+},{"./core":28}],53:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -9291,7 +11485,7 @@ module.exports={
 	return CryptoJS.SHA224;
 
 }));
-},{"./core":23,"./sha256":49}],49:[function(require,module,exports){
+},{"./core":28,"./sha256":54}],54:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -9491,7 +11685,7 @@ module.exports={
 	return CryptoJS.SHA256;
 
 }));
-},{"./core":23}],50:[function(require,module,exports){
+},{"./core":28}],55:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -9815,7 +12009,7 @@ module.exports={
 	return CryptoJS.SHA3;
 
 }));
-},{"./core":23,"./x64-core":54}],51:[function(require,module,exports){
+},{"./core":28,"./x64-core":59}],56:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -9899,7 +12093,7 @@ module.exports={
 	return CryptoJS.SHA384;
 
 }));
-},{"./core":23,"./sha512":52,"./x64-core":54}],52:[function(require,module,exports){
+},{"./core":28,"./sha512":57,"./x64-core":59}],57:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -10223,7 +12417,7 @@ module.exports={
 	return CryptoJS.SHA512;
 
 }));
-},{"./core":23,"./x64-core":54}],53:[function(require,module,exports){
+},{"./core":28,"./x64-core":59}],58:[function(require,module,exports){
 ;(function (root, factory, undef) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -10994,7 +13188,7 @@ module.exports={
 	return CryptoJS.TripleDES;
 
 }));
-},{"./cipher-core":22,"./core":23,"./enc-base64":24,"./evpkdf":26,"./md5":31}],54:[function(require,module,exports){
+},{"./cipher-core":27,"./core":28,"./enc-base64":29,"./evpkdf":31,"./md5":36}],59:[function(require,module,exports){
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS
@@ -11299,7 +13493,396 @@ module.exports={
 	return CryptoJS;
 
 }));
-},{"./core":23}],55:[function(require,module,exports){
+},{"./core":28}],60:[function(require,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+function EventEmitter() {
+  this._events = this._events || {};
+  this._maxListeners = this._maxListeners || undefined;
+}
+module.exports = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+EventEmitter.defaultMaxListeners = 10;
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!isNumber(n) || n < 0 || isNaN(n))
+    throw TypeError('n must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+EventEmitter.prototype.emit = function(type) {
+  var er, handler, len, args, i, listeners;
+
+  if (!this._events)
+    this._events = {};
+
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events.error ||
+        (isObject(this._events.error) && !this._events.error.length)) {
+      er = arguments[1];
+      if (er instanceof Error) {
+        throw er; // Unhandled 'error' event
+      }
+      throw TypeError('Uncaught, unspecified "error" event.');
+    }
+  }
+
+  handler = this._events[type];
+
+  if (isUndefined(handler))
+    return false;
+
+  if (isFunction(handler)) {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        len = arguments.length;
+        args = new Array(len - 1);
+        for (i = 1; i < len; i++)
+          args[i - 1] = arguments[i];
+        handler.apply(this, args);
+    }
+  } else if (isObject(handler)) {
+    len = arguments.length;
+    args = new Array(len - 1);
+    for (i = 1; i < len; i++)
+      args[i - 1] = arguments[i];
+
+    listeners = handler.slice();
+    len = listeners.length;
+    for (i = 0; i < len; i++)
+      listeners[i].apply(this, args);
+  }
+
+  return true;
+};
+
+EventEmitter.prototype.addListener = function(type, listener) {
+  var m;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events)
+    this._events = {};
+
+  // To avoid recursion in the case that type === "newListener"! Before
+  // adding it to the listeners, first emit "newListener".
+  if (this._events.newListener)
+    this.emit('newListener', type,
+              isFunction(listener.listener) ?
+              listener.listener : listener);
+
+  if (!this._events[type])
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  else if (isObject(this._events[type]))
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  else
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+
+  // Check for listener leak
+  if (isObject(this._events[type]) && !this._events[type].warned) {
+    var m;
+    if (!isUndefined(this._maxListeners)) {
+      m = this._maxListeners;
+    } else {
+      m = EventEmitter.defaultMaxListeners;
+    }
+
+    if (m && m > 0 && this._events[type].length > m) {
+      this._events[type].warned = true;
+      console.error('(node) warning: possible EventEmitter memory ' +
+                    'leak detected. %d listeners added. ' +
+                    'Use emitter.setMaxListeners() to increase limit.',
+                    this._events[type].length);
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
+    }
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  var fired = false;
+
+  function g() {
+    this.removeListener(type, g);
+
+    if (!fired) {
+      fired = true;
+      listener.apply(this, arguments);
+    }
+  }
+
+  g.listener = listener;
+  this.on(type, g);
+
+  return this;
+};
+
+// emits a 'removeListener' event iff the listener was removed
+EventEmitter.prototype.removeListener = function(type, listener) {
+  var list, position, length, i;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events || !this._events[type])
+    return this;
+
+  list = this._events[type];
+  length = list.length;
+  position = -1;
+
+  if (list === listener ||
+      (isFunction(list.listener) && list.listener === listener)) {
+    delete this._events[type];
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+
+  } else if (isObject(list)) {
+    for (i = length; i-- > 0;) {
+      if (list[i] === listener ||
+          (list[i].listener && list[i].listener === listener)) {
+        position = i;
+        break;
+      }
+    }
+
+    if (position < 0)
+      return this;
+
+    if (list.length === 1) {
+      list.length = 0;
+      delete this._events[type];
+    } else {
+      list.splice(position, 1);
+    }
+
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  var key, listeners;
+
+  if (!this._events)
+    return this;
+
+  // not listening for removeListener, no need to emit
+  if (!this._events.removeListener) {
+    if (arguments.length === 0)
+      this._events = {};
+    else if (this._events[type])
+      delete this._events[type];
+    return this;
+  }
+
+  // emit removeListener for all listeners on all events
+  if (arguments.length === 0) {
+    for (key in this._events) {
+      if (key === 'removeListener') continue;
+      this.removeAllListeners(key);
+    }
+    this.removeAllListeners('removeListener');
+    this._events = {};
+    return this;
+  }
+
+  listeners = this._events[type];
+
+  if (isFunction(listeners)) {
+    this.removeListener(type, listeners);
+  } else {
+    // LIFO order
+    while (listeners.length)
+      this.removeListener(type, listeners[listeners.length - 1]);
+  }
+  delete this._events[type];
+
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  var ret;
+  if (!this._events || !this._events[type])
+    ret = [];
+  else if (isFunction(this._events[type]))
+    ret = [this._events[type]];
+  else
+    ret = this._events[type].slice();
+  return ret;
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  var ret;
+  if (!emitter._events || !emitter._events[type])
+    ret = 0;
+  else if (isFunction(emitter._events[type]))
+    ret = 1;
+  else
+    ret = emitter._events[type].length;
+  return ret;
+};
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+
+},{}],61:[function(require,module,exports){
+exports.read = function (buffer, offset, isLE, mLen, nBytes) {
+  var e, m
+  var eLen = nBytes * 8 - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var nBits = -7
+  var i = isLE ? (nBytes - 1) : 0
+  var d = isLE ? -1 : 1
+  var s = buffer[offset + i]
+
+  i += d
+
+  e = s & ((1 << (-nBits)) - 1)
+  s >>= (-nBits)
+  nBits += eLen
+  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+  m = e & ((1 << (-nBits)) - 1)
+  e >>= (-nBits)
+  nBits += mLen
+  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+  if (e === 0) {
+    e = 1 - eBias
+  } else if (e === eMax) {
+    return m ? NaN : ((s ? -1 : 1) * Infinity)
+  } else {
+    m = m + Math.pow(2, mLen)
+    e = e - eBias
+  }
+  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
+}
+
+exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
+  var e, m, c
+  var eLen = nBytes * 8 - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
+  var i = isLE ? 0 : (nBytes - 1)
+  var d = isLE ? 1 : -1
+  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
+
+  value = Math.abs(value)
+
+  if (isNaN(value) || value === Infinity) {
+    m = isNaN(value) ? 1 : 0
+    e = eMax
+  } else {
+    e = Math.floor(Math.log(value) / Math.LN2)
+    if (value * (c = Math.pow(2, -e)) < 1) {
+      e--
+      c *= 2
+    }
+    if (e + eBias >= 1) {
+      value += rt / c
+    } else {
+      value += rt * Math.pow(2, 1 - eBias)
+    }
+    if (value * c >= 2) {
+      e++
+      c /= 2
+    }
+
+    if (e + eBias >= eMax) {
+      m = 0
+      e = eMax
+    } else if (e + eBias >= 1) {
+      m = (value * c - 1) * Math.pow(2, mLen)
+      e = e + eBias
+    } else {
+      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
+      e = 0
+    }
+  }
+
+  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
+
+  e = (e << mLen) | m
+  eLen += mLen
+  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
+
+  buffer[offset + i - d] |= s * 128
+}
+
+},{}],62:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -11364,7 +13947,7 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],56:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 /** @license MIT License (c) copyright 2013-2014 original author or authors */
 
 /**
@@ -11470,7 +14053,7 @@ define(function(require) {
 
 
 
-},{"./lib/apply":60,"./lib/liftAll":72,"./when":80}],57:[function(require,module,exports){
+},{"./lib/apply":67,"./lib/liftAll":79,"./when":87}],64:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -11489,7 +14072,7 @@ define(function (require) {
 });
 })(typeof define === 'function' && define.amd ? define : function (factory) { module.exports = factory(require); });
 
-},{"./Scheduler":58,"./env":70,"./makePromise":73}],58:[function(require,module,exports){
+},{"./Scheduler":65,"./env":77,"./makePromise":80}],65:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -11571,7 +14154,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],59:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -11599,7 +14182,7 @@ define(function() {
 	return TimeoutError;
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
-},{}],60:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -11656,7 +14239,7 @@ define(function() {
 
 
 
-},{}],61:[function(require,module,exports){
+},{}],68:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -11947,7 +14530,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"../apply":60,"../state":74}],62:[function(require,module,exports){
+},{"../apply":67,"../state":81}],69:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12109,7 +14692,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],63:[function(require,module,exports){
+},{}],70:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12138,7 +14721,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],64:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12160,7 +14743,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"../state":74}],65:[function(require,module,exports){
+},{"../state":81}],72:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12227,7 +14810,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],66:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12253,7 +14836,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],67:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12333,7 +14916,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"../TimeoutError":59,"../env":70}],68:[function(require,module,exports){
+},{"../TimeoutError":66,"../env":77}],75:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12421,7 +15004,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"../env":70,"../format":71}],69:[function(require,module,exports){
+},{"../env":77,"../format":78}],76:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12461,7 +15044,7 @@ define(function() {
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
 
-},{}],70:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 (function (process){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
@@ -12537,8 +15120,8 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-}).call(this,require("XJF/FV"))
-},{"XJF/FV":55}],71:[function(require,module,exports){
+}).call(this,require("e/U+97"))
+},{"e/U+97":62}],78:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12596,7 +15179,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],72:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -12626,7 +15209,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],73:[function(require,module,exports){
+},{}],80:[function(require,module,exports){
 (function (process){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
@@ -13556,8 +16139,8 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-}).call(this,require("XJF/FV"))
-},{"XJF/FV":55}],74:[function(require,module,exports){
+}).call(this,require("e/U+97"))
+},{"e/U+97":62}],81:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -13594,7 +16177,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],75:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -13613,7 +16196,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"./monitor/ConsoleReporter":76,"./monitor/PromiseMonitor":77}],76:[function(require,module,exports){
+},{"./monitor/ConsoleReporter":83,"./monitor/PromiseMonitor":84}],83:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -13721,7 +16304,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"./error":79}],77:[function(require,module,exports){
+},{"./error":86}],84:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -13920,7 +16503,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"../lib/env":70,"./error":79}],78:[function(require,module,exports){
+},{"../lib/env":77,"./error":86}],85:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -13936,7 +16519,7 @@ define(function(require) {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));
 
-},{"../monitor":75,"../when":80}],79:[function(require,module,exports){
+},{"../monitor":82,"../when":87}],86:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -14024,7 +16607,7 @@ define(function() {
 });
 }(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(); }));
 
-},{}],80:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 
 /**
@@ -14254,52 +16837,7 @@ define(function (require) {
 });
 })(typeof define === 'function' && define.amd ? define : function (factory) { module.exports = factory(require); });
 
-},{"./lib/Promise":57,"./lib/TimeoutError":59,"./lib/apply":60,"./lib/decorators/array":61,"./lib/decorators/flow":62,"./lib/decorators/fold":63,"./lib/decorators/inspect":64,"./lib/decorators/iterate":65,"./lib/decorators/progress":66,"./lib/decorators/timed":67,"./lib/decorators/unhandledRejection":68,"./lib/decorators/with":69}],81:[function(require,module,exports){
-
-/**
- * Module dependencies.
- */
-
-var global = (function() { return this; })();
-
-/**
- * WebSocket constructor.
- */
-
-var WebSocket = global.WebSocket || global.MozWebSocket;
-
-/**
- * Module exports.
- */
-
-module.exports = WebSocket ? ws : null;
-
-/**
- * WebSocket constructor.
- *
- * The third `opts` options object gets ignored in web browsers, since it's
- * non-standard, and throws a TypeError if passed to the constructor.
- * See: https://github.com/einaros/ws/issues/227
- *
- * @param {String} uri
- * @param {Array} protocols (optional)
- * @param {Object) opts (optional)
- * @api public
- */
-
-function ws(uri, protocols, opts) {
-  var instance;
-  if (protocols) {
-    instance = new WebSocket(uri, protocols);
-  } else {
-    instance = new WebSocket(uri);
-  }
-  return instance;
-}
-
-if (WebSocket) ws.prototype = WebSocket.prototype;
-
-},{}],82:[function(require,module,exports){
+},{"./lib/Promise":64,"./lib/TimeoutError":66,"./lib/apply":67,"./lib/decorators/array":68,"./lib/decorators/flow":69,"./lib/decorators/fold":70,"./lib/decorators/inspect":71,"./lib/decorators/iterate":72,"./lib/decorators/progress":73,"./lib/decorators/timed":74,"./lib/decorators/unhandledRejection":75,"./lib/decorators/with":76}],88:[function(require,module,exports){
 var ConnectionState;
 (function (ConnectionState) {
     ConnectionState[ConnectionState["NotCreated"] = 0] = "NotCreated";
@@ -14311,7 +16849,7 @@ module.exports = ConnectionState;
 
 //# sourceMappingURL=ConnectionState.js.map
 
-},{}],83:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 module.exports = {
     register: 'com.kurentoHub.register',
     connectToStream: 'com.kurentoHub.connectToStream'
@@ -14319,7 +16857,7 @@ module.exports = {
 
 //# sourceMappingURL=KurentoHubRpcNames.js.map
 
-},{}],84:[function(require,module,exports){
+},{}],90:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -14350,7 +16888,7 @@ module.exports = WampCraSaltedCredentials;
 
 //# sourceMappingURL=WampCraSaltedCredentials.js.map
 
-},{"./WampCredentials":85,"autobahn":1}],85:[function(require,module,exports){
+},{"./WampCredentials":91,"autobahn":1}],91:[function(require,module,exports){
 /**
  *  Base class for WAMP credentials used to authenticate
  *  WAMP node on WAMP Router.
@@ -14384,7 +16922,7 @@ module.exports = WampCredentials;
 
 //# sourceMappingURL=WampCredentials.js.map
 
-},{}],86:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 var autobahn = require('autobahn');
 var ConnectionState = require('./ConnectionState');
 var WampRouterConnectionManager = (function () {
@@ -14496,7 +17034,7 @@ module.exports = WampRouterConnectionManager;
 
 //# sourceMappingURL=WampRouterConnectionManager.js.map
 
-},{"./ConnectionState":82,"autobahn":1}],87:[function(require,module,exports){
+},{"./ConnectionState":88,"autobahn":1}],93:[function(require,module,exports){
 var WampEndpointPath = (function () {
     function WampEndpointPath(type, path) {
         this._type = type;
@@ -14522,7 +17060,7 @@ module.exports = WampEndpointPath;
 
 //# sourceMappingURL=WampEndpointPath.js.map
 
-},{}],88:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 var WampListeningEndpoint = (function () {
     function WampListeningEndpoint(port) {
         this.version = '4';
@@ -14556,7 +17094,7 @@ module.exports = WampListeningEndpoint;
 
 //# sourceMappingURL=WampListeningEndpoint.js.map
 
-},{}],89:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -14575,7 +17113,7 @@ module.exports = WampStaticEndpointPath;
 
 //# sourceMappingURL=WampStaticEndpointPath.js.map
 
-},{"./WampEndpointPath":87}],90:[function(require,module,exports){
+},{"./WampEndpointPath":93}],96:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -14593,7 +17131,7 @@ module.exports = WampWebSocketEndpointPath;
 
 //# sourceMappingURL=WampWebSocketEndpointPath.js.map
 
-},{"./WampEndpointPath":87}],91:[function(require,module,exports){
+},{"./WampEndpointPath":93}],97:[function(require,module,exports){
 var WampListeningEndpoint = require('./WampListeningEndpoint');
 var WampStaticEndpointPath = require('./WampStaticEndpointPath');
 var WampWebSocketEndpointPath = require('./WampWebSocketEndpointPath');
@@ -14635,7 +17173,7 @@ module.exports = WampWebTransportConfiguration;
 
 //# sourceMappingURL=WampWebTransportConfiguration.js.map
 
-},{"./WampListeningEndpoint":88,"./WampStaticEndpointPath":89,"./WampWebSocketEndpointPath":90}],92:[function(require,module,exports){
+},{"./WampListeningEndpoint":94,"./WampStaticEndpointPath":95,"./WampWebSocketEndpointPath":96}],98:[function(require,module,exports){
 /*
  * (C) Copyright 2013 Kurento (http://kurento.org/)
  *
@@ -14731,7 +17269,7 @@ module.exports = ConsoleWrapper;
 
 //# sourceMappingURL=Console.js.map
 
-},{}],93:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 var KurentoHubRpcNames = require('../../server/KurentoHubRpcNames');
 var WampCraSaltedCredentials = require('../../server/WampCraSaltedCredentials');
 var WampRouterConnectionManager = require('../../server/WampRouterConnectionManager');
@@ -14784,7 +17322,7 @@ module.exports = KurentoHubClient;
 
 //# sourceMappingURL=KurentoHubClient.js.map
 
-},{"../../server/KurentoHubRpcNames":83,"../../server/Wamp/Transport/WampWebTransportConfiguration":91,"../../server/WampCraSaltedCredentials":84,"../../server/WampRouterConnectionManager":86}],94:[function(require,module,exports){
+},{"../../server/KurentoHubRpcNames":89,"../../server/Wamp/Transport/WampWebTransportConfiguration":97,"../../server/WampCraSaltedCredentials":90,"../../server/WampRouterConnectionManager":92}],100:[function(require,module,exports){
 var KurentoPlayer /*extends EventTarget*/ = (function () {
     function KurentoPlayer /*extends EventTarget*/(streamUrl) {
         //super();
@@ -14809,7 +17347,7 @@ module.exports = KurentoPlayer;
 
 //# sourceMappingURL=KurentoPlayer.js.map
 
-},{}],95:[function(require,module,exports){
+},{}],101:[function(require,module,exports){
 var ConnectionState = require('../../server/ConnectionState');
 var KurentoHubClient = require('./KurentoHubClient');
 var KurentoPlayer = require('./KurentoPlayer');
@@ -14903,7 +17441,7 @@ module.exports = KurentoVideoConsumer;
 
 //# sourceMappingURL=KurentoVideoConsumer.js.map
 
-},{"../../server/ConnectionState":82,"./KurentoHubClient":93,"./KurentoPlayer":94}],96:[function(require,module,exports){
+},{"../../server/ConnectionState":88,"./KurentoHubClient":99,"./KurentoPlayer":100}],102:[function(require,module,exports){
 /*
  * (C) Copyright 2014 Kurento (http://kurento.org/)
  *
@@ -15095,4 +17633,4 @@ $(document).delegate('*[data-toggle="lightbox"]', 'click', function (event) {
 
 //# sourceMappingURL=index.js.map
 
-},{"./Console":92,"./KurentoVideoConsumer.js":95}]},{},[96])
+},{"./Console":98,"./KurentoVideoConsumer.js":101}]},{},[102])
