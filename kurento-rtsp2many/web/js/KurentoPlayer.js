@@ -19,4 +19,5 @@ var KurentoPlayer /*extends EventTarget*/ = (function () {
     return KurentoPlayer /*extends EventTarget*/;
 })();
 module.exports = KurentoPlayer;
+
 //# sourceMappingURL=KurentoPlayer.js.map

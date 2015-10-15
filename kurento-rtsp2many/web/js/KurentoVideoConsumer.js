@@ -67,4 +67,5 @@ var KurentoVideoConsumer = (function () {
     return KurentoVideoConsumer;
 })();
 module.exports = KurentoVideoConsumer;
+
 //# sourceMappingURL=KurentoVideoConsumer.js.map

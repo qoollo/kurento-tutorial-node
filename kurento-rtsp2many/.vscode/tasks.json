@@ -5,6 +5,7 @@
     "args": [
         "--no-color"
     ],
+    "problemMatcher": "$tsc",
     "tasks": [
         {
             "taskName": "default",

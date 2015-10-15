@@ -47,4 +47,5 @@ var KurentoHubClient = (function () {
     return KurentoHubClient;
 })();
 module.exports = KurentoHubClient;
+
 //# sourceMappingURL=KurentoHubClient.js.map

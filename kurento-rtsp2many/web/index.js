@@ -14331,20 +14331,24 @@ var WampCredentials = require('./WampCredentials');
  * Represents credentials used to authenticate WAMP Node on WAMP Router
  * WAMP Challenge-Response Authentication method (WAMP-CRA).
  */
-var WampCraCredentials = (function (_super) {
-    __extends(WampCraCredentials, _super);
-    function WampCraCredentials(authId, secret) {
+var WampCraSaltedCredentials = (function (_super) {
+    __extends(WampCraSaltedCredentials, _super);
+    function WampCraSaltedCredentials(authId, secret, salt, iterations, keylen) {
         _super.call(this, 'wampcra', authId);
         this.secret = secret;
+        this.salt = salt;
+        this.iterations = iterations;
+        this.keylen = keylen;
     }
-    WampCraCredentials.prototype.onChallengeConcrete = function (extra) {
-        return autobahn.auth_cra.sign(this.secret, extra.challenge);
+    WampCraSaltedCredentials.prototype.onChallengeConcrete = function (extra) {
+        var key = autobahn.auth_cra.derive_key(this.secret, this.salt, this.iterations, this.keylen);
+        return autobahn.auth_cra.sign(key, extra.challenge);
     };
-    return WampCraCredentials;
+    return WampCraSaltedCredentials;
 })(WampCredentials);
-module.exports = WampCraCredentials;
+module.exports = WampCraSaltedCredentials;
 
-//# sourceMappingURL=WampCraCredentials.js.map
+//# sourceMappingURL=WampCraSaltedCredentials.js.map
 
 },{"./WampCredentials":85,"autobahn":1}],85:[function(require,module,exports){
 /**
@@ -14729,13 +14733,13 @@ module.exports = ConsoleWrapper;
 
 },{}],93:[function(require,module,exports){
 var KurentoHubRpcNames = require('../../server/KurentoHubRpcNames');
-var WampCraCredentials = require('../../server/WampCraCredentials');
+var WampCraSaltedCredentials = require('../../server/WampCraSaltedCredentials');
 var WampRouterConnectionManager = require('../../server/WampRouterConnectionManager');
 var WampWebTransportConfiguration = require('../../server/Wamp/Transport/WampWebTransportConfiguration');
 var KurentoHubClient = (function () {
     function KurentoHubClient(config, kurentoHubDomain, logger) {
         if (logger === void 0) { logger = console; }
-        var transportConfig = new WampWebTransportConfiguration(config), url = transportConfig.getUrl(kurentoHubDomain, 'kurentoHub'), credentials = new WampCraCredentials('VideoConsumer', 'secret1'); //new WampCraSaltedCredentials('VideoConsumer', 'secret1', 'salt123', 100, 16);
+        var transportConfig = new WampWebTransportConfiguration(config), url = transportConfig.getUrl(kurentoHubDomain, 'kurentoHub'), credentials = new WampCraSaltedCredentials('VideoConsumer', 'secret1', 'salt123', 100, 16);
         this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', credentials, logger);
         this.logger = logger;
     }
@@ -14780,7 +14784,7 @@ module.exports = KurentoHubClient;
 
 //# sourceMappingURL=KurentoHubClient.js.map
 
-},{"../../server/KurentoHubRpcNames":83,"../../server/Wamp/Transport/WampWebTransportConfiguration":91,"../../server/WampCraCredentials":84,"../../server/WampRouterConnectionManager":86}],94:[function(require,module,exports){
+},{"../../server/KurentoHubRpcNames":83,"../../server/Wamp/Transport/WampWebTransportConfiguration":91,"../../server/WampCraSaltedCredentials":84,"../../server/WampRouterConnectionManager":86}],94:[function(require,module,exports){
 var KurentoPlayer /*extends EventTarget*/ = (function () {
     function KurentoPlayer /*extends EventTarget*/(streamUrl) {
         //super();

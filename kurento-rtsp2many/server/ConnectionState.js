@@ -6,4 +6,5 @@ var ConnectionState;
     ConnectionState[ConnectionState["Disconnected"] = 3] = "Disconnected";
 })(ConnectionState || (ConnectionState = {}));
 module.exports = ConnectionState;
+
 //# sourceMappingURL=ConnectionState.js.map

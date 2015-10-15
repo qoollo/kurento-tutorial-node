@@ -18,7 +18,7 @@ gulp.task('compile-ts', function () {
 			.pipe(sourcemaps.init())
 			.pipe(ts(tsProject));
 	return tsResult.js
-		.pipe(sourcemaps.write('./'))
+		.pipe(sourcemaps.write('.', { sourceRoot: '../' }))
 		.pipe(gulp.dest('./'));
 			
 	

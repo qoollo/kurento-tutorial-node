@@ -20,4 +20,5 @@ var WampEndpointPath = (function () {
     return WampEndpointPath;
 })();
 module.exports = WampEndpointPath;
+
 //# sourceMappingURL=WampEndpointPath.js.map

@@ -1,1 +1,1 @@
-{"version":3,"file":"KurentoHubRpcNames.js","sourceRoot":"","sources":["KurentoHubRpcNames.ts"],"names":[],"mappings":"AACA,iBAAS;IACL,QAAQ,EAAE,yBAAyB;IACnC,eAAe,EAAE,gCAAgC;CACpD,CAAA"}
+{"version":3,"sources":["server/KurentoHubRpcNames.ts"],"names":[],"mappings":"AACA,iBAAS;IACL,QAAQ,EAAE,yBAAyB;IACnC,eAAe,EAAE,gCAAgC;CACpD,CAAA","file":"server/KurentoHubRpcNames.js","sourcesContent":["\r\nexport = {\r\n    register: 'com.kurentoHub.register',\r\n    connectToStream: 'com.kurentoHub.connectToStream'\r\n}"],"sourceRoot":"../"}

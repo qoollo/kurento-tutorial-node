@@ -153,7 +153,7 @@ wssForControl.on('connection', function (ws) {
 
     });
 
-})
+});
 
 function addMasterIfNotExists(streamUrl: string): RpcResponse {
     var master = masterManager.getMasterByStreamUrl(streamUrl);

@@ -90,4 +90,5 @@ var ConsoleWrapper = (function () {
     return ConsoleWrapper;
 })();
 module.exports = ConsoleWrapper;
+
 //# sourceMappingURL=Console.js.map

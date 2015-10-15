@@ -38,6 +38,7 @@ var argv = minimist(process.argv.slice(2), {
     }
 });
 logger.info('KurentoHub started.');
+debugger;
 var app = express();
 var kurentoHubServer = new KurentoHubServer();
 kurentoHubServer.start().then(function () {
@@ -226,4 +227,5 @@ var RpcResponseStatus;
     RpcResponseStatus[RpcResponseStatus["Error"] = 1] = "Error";
 })(RpcResponseStatus || (RpcResponseStatus = {}));
 //app.use(express.static(path.join(__dirname, 'static')));
+
 //# sourceMappingURL=server.js.map

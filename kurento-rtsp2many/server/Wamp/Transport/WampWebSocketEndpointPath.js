@@ -12,4 +12,5 @@ var WampWebSocketEndpointPath = (function (_super) {
     return WampWebSocketEndpointPath;
 })(WampEndpointPath);
 module.exports = WampWebSocketEndpointPath;
+
 //# sourceMappingURL=WampWebSocketEndpointPath.js.map

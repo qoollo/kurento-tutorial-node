@@ -86,4 +86,5 @@ var KurentoHubServer = (function () {
     return KurentoHubServer;
 })();
 module.exports = KurentoHubServer;
+
 //# sourceMappingURL=KurentoHubServer.js.map

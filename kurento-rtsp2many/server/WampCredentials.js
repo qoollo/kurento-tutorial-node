@@ -28,4 +28,5 @@ var WampCredentials = (function () {
     return WampCredentials;
 })();
 module.exports = WampCredentials;
+
 //# sourceMappingURL=WampCredentials.js.map
