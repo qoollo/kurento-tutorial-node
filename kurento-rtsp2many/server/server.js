@@ -38,7 +38,6 @@ var argv = minimist(process.argv.slice(2), {
     }
 });
 logger.info('KurentoHub started.');
-debugger;
 var app = express();
 var kurentoHubServer = new KurentoHubServer();
 kurentoHubServer.start().then(function () {

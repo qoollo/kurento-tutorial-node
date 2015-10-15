@@ -9,7 +9,8 @@
     "tasks": [
         {
             "taskName": "default",
-            "isBuildCommand": true
+            "isBuildCommand": true,
+            "isWatching": true
         }
     ]
 }

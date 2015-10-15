@@ -3,8 +3,18 @@ var gulp = require('gulp');
 var ts = require('gulp-typescript');
 var sourcemaps = require('gulp-sourcemaps');
 var browserify = require('gulp-browserify');
+var watch = require('gulp-watch');
 
-gulp.task('default', ['compile-ts', 'client']);
+gulp.task('default', ['build-server', 'build-client'], function () {
+	gulp.watch('server/**/*.ts', ['build-server']);
+	gulp.watch('web/**/*.ts', ['build-client']);	
+});
+
+gulp.task('build-server', ['compile-ts'], function() {
+});
+
+gulp.task('build-client', ['compile-ts', 'client'], function() {
+});
 
 gulp.task('client', ['compile-ts'], function () {
     return gulp.src('./web/js/index.js')
@@ -19,22 +29,5 @@ gulp.task('compile-ts', function () {
 			.pipe(ts(tsProject));
 	return tsResult.js
 		.pipe(sourcemaps.write('.', { sourceRoot: '../' }))
-		.pipe(gulp.dest('./'));
-			
-	
-	
-	var tsResult = gulp.src('./**/*.ts')
-		//.pipe(sourcemaps.init())
-		.pipe(ts({
-			//noImplicitAny: false,
-			target: 'ES5',
-			//outFile: 'server.js',
-			//out: 'server.js',
-			//sortOutput: true,
-		    module: 'commonjs'
-		}));
-	
-	return tsResult.js
-		.pipe(sourcemaps.write())
 		.pipe(gulp.dest('./'));
 });

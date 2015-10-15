@@ -13,8 +13,8 @@
  *
  */
 
-import ConsoleWrapper = require('./Console')
-var KurentoVideoConsumer = require('./KurentoVideoConsumer.js')
+import ConsoleWrapper = require('./Console');
+var KurentoVideoConsumer = require('./KurentoVideoConsumer.js');
 
 var ws,
     video,
