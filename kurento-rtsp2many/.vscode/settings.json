@@ -9,10 +9,12 @@
 		"web/bower_components": true,
 		
 		//	Exculde .js and .js.map
-		"server/*.js": true,
-		"server/*.js.map": true,
-		"web/js/*.js": true,
-		"web/js/*.js.map": true,
+		"server/**/*.js": true,
+		"server/**/*.js.map": true,
+		"tests/**/*.js": true,
+		"tests/**/*.js.map": true,
+		"web/js/**/*.js": true,
+		"web/js/**/*.js.map": true,
 		
 		//	Stuff
 		"bin": true,
