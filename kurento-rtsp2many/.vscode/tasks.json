@@ -5,12 +5,12 @@
     "args": [
         "--no-color"
     ],
-    "problemMatcher": "$tsc",
     "tasks": [
         {
             "taskName": "default",
             "isBuildCommand": true,
-            "isWatching": true
+            "isWatching": true,
+            "problemMatcher": "$gulp-tsc"
         }
     ]
 }
