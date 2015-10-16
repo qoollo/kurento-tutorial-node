@@ -1,2 +1,2 @@
 /// <reference path="node/node.d.ts" />
-/// <reference path="xpath/xpath.d.ts" />
+/// <reference path="xml2js/xml2js.d.ts" />
