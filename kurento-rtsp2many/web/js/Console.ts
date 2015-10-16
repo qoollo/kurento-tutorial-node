@@ -29,6 +29,7 @@ class ConsoleWrapper {
 
     constructor(id, console) {
         this.div = document.getElementById(id);
+        this.console = console;
     }
 
     private div: HTMLElement;
@@ -94,11 +95,15 @@ class ConsoleWrapper {
 	 * @param msg:
 	 *            message or object to be shown
 	 */
-    public debug = function (msg) {
+    public debug (msg) {
         this.console.log(msg);
         // this._append(createMessage(msg, "#0000FF"));
     };
 
+    public info(...args?: any[]) {
+        this.console.info.apply(this.console, args)
+        // this._append(createMessage(msg, "#0000FF"));
+    };
 }
 
 export = ConsoleWrapper;

@@ -42,6 +42,7 @@ class KurentoVideoConsumer {
                 } else {
                     this.logger.log('Not authorized yet. Registering...');
                     res = this.hub.register();
+                    res.then(c => this.saveCredentials(c));
                     res.then(cc => this.logger.log('Successfully registered as ' + cc.clientId),
                         err => this.logger.error('Failed to register.' + err));
                 }
@@ -53,6 +54,12 @@ class KurentoVideoConsumer {
         var str = localStorage.getItem(KurentoVideoConsumer.credentialsKey),
             res = <Protocol.IClientId>JSON.parse(str);
         return Promise.resolve(res);
+    }
+    
+    saveCredentials(credentials: Protocol.IClientId): Promise<void> {
+        var str = JSON.stringify(credentials);
+        localStorage.setItem(KurentoVideoConsumer.credentialsKey, str);
+        return Promise.resolve();
     }
     
     private static credentialsKey: string = 'KurentoHubClientCredentials';
