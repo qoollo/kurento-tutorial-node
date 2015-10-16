@@ -12,9 +12,14 @@ obj/
 bin/
 logs/
 *.log
+*.pid
 
 # kurento-rtsp2many
 kurento-rtsp2many/server.js
+kurento-rtsp2many/server/**/*.js
+kurento-rtsp2many/server/**/*.js.map
+kurento-rtsp2many/web/js/**/*.js
+kurento-rtsp2many/web/js/**/*.js.map
 
 # aquamed-kurento-rtsp2webrtc
 aquamed-kurento-rtsp2webrtc/script.js
