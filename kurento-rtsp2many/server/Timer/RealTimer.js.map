@@ -1,1 +1,0 @@
-{"version":3,"sources":["server/Timer/RealTimer.ts"],"names":[],"mappings":"AAAA;;;;EAIE","file":"server/Timer/RealTimer.js","sourcesContent":["/*\r\nclass RealTimer{\r\n\tsetTimeout(callback: ()=>any, timeout: number): number;\r\n}\r\n*/"],"sourceRoot":"../"}

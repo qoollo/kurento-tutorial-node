@@ -1,1 +1,0 @@
-{"version":3,"sources":["server/MonitManager.ts"],"names":[],"mappings":"AAAqB,CAAC,OAAO,CAAC,CAAC","file":"server/MonitManager.js","sourcesContent":["import xpath = module('xpath');"],"sourceRoot":"../"}
