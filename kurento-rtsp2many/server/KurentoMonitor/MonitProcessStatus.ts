@@ -4,14 +4,10 @@ class MonitProcessStatus {
 	public cpuPercent: number;
 	
 	public constructor(serviceSrc: any) {
-		try {
-			this.uptime = serviceSrc.uptime;
-			this.memoryPercent = serviceSrc.memory.percent;
-			this.cpuPercent = serviceSrc.cpu.percent;
-		} catch (error) {
-			console.log(error);
-		}
-		this.uptime = serviceSrc
+		this.uptime = serviceSrc.uptime;
+		this.memoryPercent = serviceSrc.memory.percent;
+		this.cpuPercent = serviceSrc.cpu.percent;
+		this.uptime = serviceSrc;
 	}
 }
 
