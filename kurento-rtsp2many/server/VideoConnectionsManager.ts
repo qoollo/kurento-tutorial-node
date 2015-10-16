@@ -1,0 +1,6 @@
+
+class VideoConnectionsManager {
+	
+}
+
+export = VideoConnectionsManager;

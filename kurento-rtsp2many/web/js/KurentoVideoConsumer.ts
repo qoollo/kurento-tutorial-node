@@ -59,7 +59,7 @@ class KurentoVideoConsumer {
     saveCredentials(credentials: Protocol.IClientId): Promise<void> {
         var str = JSON.stringify(credentials);
         localStorage.setItem(KurentoVideoConsumer.credentialsKey, str);
-        return Promise.resolve();
+        return <any>Promise.resolve();
     }
     
     private static credentialsKey: string = 'KurentoHubClientCredentials';

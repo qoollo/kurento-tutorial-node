@@ -35,6 +35,16 @@ class ConsoleWrapper {
     private div: HTMLElement;
     private console: Console;
 
+    private stringFormat(str: string, ...args: any[]): string {
+        var i = str.indexOf('%');
+        while (i >= 0) {
+            if (str.substr(i, 2) == '%d')
+                str = str.substring(0, i) + Number(args.shift()) + str.substring(i + 2);
+            i = str.indexOf('%');
+        }
+        return str;
+    }
+
     private createMessage(msg: string, color?: string) {
         // Sanitize the input
         msg = msg.toString().replace(/</g, '&lt;');
@@ -74,17 +84,8 @@ class ConsoleWrapper {
         this._append(this.createMessage(msg, "#FFA500"));
     };
 
-	/**
-	 * Show an Info message both on browser console and on defined DIV
-	 * 
-	 * @param msg:
-	 *            message or object to be shown
-	 */
-    public info(msg) {
-        this.console.info(msg);
-        this._append(this.createMessage(msg));
-    }
-
+	
+    
     public log(msg) {
         this.info(msg);
     };
@@ -99,11 +100,17 @@ class ConsoleWrapper {
         this.console.log(msg);
         // this._append(createMessage(msg, "#0000FF"));
     };
-
-    public info(...args?: any[]) {
+    
+    /**
+	 * Show an Info message both on browser console and on defined DIV
+	 * 
+	 * @param msg:
+	 *            message or object to be shown
+	 */
+    public info(...args: any[]) {
         this.console.info.apply(this.console, args)
-        // this._append(createMessage(msg, "#0000FF"));
-    };
+        this._append(this.createMessage(this.stringFormat(args[0], args.slice(1)), "#0000FF"));
+    }
 }
 
 export = ConsoleWrapper;
