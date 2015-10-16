@@ -4,12 +4,19 @@ var ts = require('gulp-typescript');
 var sourcemaps = require('gulp-sourcemaps');
 var browserify = require('gulp-browserify');
 var watch = require('gulp-watch');
+var path = require('path');
+var install = require("gulp-install");
 
-gulp.task('default', ['build-server', 'build-client', 'build-tests'], function () {
+gulp.task('default', ['npm-install', 'build-server', 'build-client', 'build-tests'], function () {
 	gulp.watch('server/**/*.ts', ['build-server']);
 	gulp.watch('web/**/*.ts', ['build-client']);
 	gulp.watch('tests/**/*.ts', ['build-tests']);
 });
+
+gulp.task('npm-install', function () {
+	return gulp.src(['./package.json'])
+  		.pipe(install());
+})
 
 gulp.task('build-server', ['compile-ts'], function() {
 });
