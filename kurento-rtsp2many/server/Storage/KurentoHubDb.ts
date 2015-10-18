@@ -5,6 +5,12 @@ class KurentoHubDb {
 		//	Mongo me! Mongo me someone!
 	}
 	
+	getKurentoServers(): Promise<Storage.IKurentoServer[]> {
+		return Promise.resolve(this.kurentoServers);
+	}
+	
+	private kurentoServers: Storage.IKurentoServer[] = [];
+	
 	getRegisteredVideoConsumers(): Promise<Storage.IVideoConsumer[]> {
 		return Promise.resolve(this.registeredVideoConsumers);
 	}
@@ -12,7 +18,8 @@ class KurentoHubDb {
 	registerVideoConsumer(): Promise<Storage.IVideoConsumer> {
 		var videoConsumer: Storage.IVideoConsumer = { 
 			clientId: this.registeredVideoConsumers.reduce((p, c) => Math.max(p, c.clientId), 1),
-			registerTime: new Date()
+			registerTime: new Date(),
+			streamConnections: []
 		};
 		this.registeredVideoConsumers.push(videoConsumer);
 		return Promise.resolve(videoConsumer);

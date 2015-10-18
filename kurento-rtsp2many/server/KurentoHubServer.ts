@@ -51,7 +51,7 @@ class KurentoHubServer {
     private registerRpcs(session: autobahn.Session): Promise<autobahn.IRegistration[]> {
         var res = Promise.all([
             session.register(KurentoHubRpcNames.register, (args, kwargs) => this.register()),
-            session.register(KurentoHubRpcNames.connectToStream, (args, kwargs) => this.connectToStream(args[0], args[1]))
+            session.register(KurentoHubRpcNames.connectToStream, (args, kwargs) => this.connectToStream(args[0], args[1], args[2]))
         ]);
         res.then(registrations =>
             registrations.forEach(r => logger.debug('KurentoHubServer RPC registered: ' + r.procedure)));
@@ -66,7 +66,7 @@ class KurentoHubServer {
         return this.db.registerVideoConsumer();
     }
 
-    connectToStream(streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
+    connectToStream(client: Protocol.IClientId, streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
         return this.addMasterIfNotExists(streamUrl)
             .then(m => this.processAddViewer(1, m, streamUrl, sdpOffer));
     }
