@@ -9,6 +9,7 @@
         {
             "taskName": "default",
             "isBuildCommand": true,
+            "showOutput": "always",
             "isWatching": true,
             "problemMatcher": "$gulp-tsc"
         }

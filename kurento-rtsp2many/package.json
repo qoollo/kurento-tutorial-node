@@ -17,6 +17,7 @@
     "xml2js": "^0.4.13"
   },
   "devDependencies": {
+    "better-console": "^0.2.4",
     "bower": "^1.4.1",
     "browserify": "^11.2.0",
     "gulp": "^3.9.0",
@@ -26,6 +27,7 @@
     "gulp-sourcemaps": "^1.5.2",
     "gulp-typescript": "^2.8.2",
     "gulp-watch": "^4.3.5",
+    "merge2": "^0.3.6",
     "typescript": "^1.6.0-beta"
   }
 }

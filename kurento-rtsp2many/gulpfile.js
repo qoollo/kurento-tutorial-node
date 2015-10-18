@@ -5,7 +5,11 @@ var sourcemaps = require('gulp-sourcemaps');
 var browserify = require('gulp-browserify');
 var watch = require('gulp-watch');
 var path = require('path');
-var install = require("gulp-install");
+var install = require("gulp-install"),
+	console = require('better-console'),
+	merge = require('merge2');
+	
+var tsProject = ts.createProject('tsconfig.json');
 
 gulp.task('default', ['npm-install', 'build-server', 'build-client', 'build-tests'], function () {
 	gulp.watch('server/**/*.ts', ['build-server']);
@@ -33,11 +37,10 @@ gulp.task('client', ['compile-ts'], function () {
         .pipe(gulp.dest('./web'));
 });
 
-gulp.task('compile-ts', function () {
-	var tsProject = ts.createProject('tsconfig.json'),
-		tsResult = tsProject.src()
-			.pipe(sourcemaps.init())
-			.pipe(ts(tsProject));
+gulp.task('compile-ts', function () {	
+	var tsResult = tsProject.src()
+		.pipe(sourcemaps.init())
+		.pipe(ts(tsProject));
 	return tsResult.js
 		.pipe(sourcemaps.write('.', { 
 			sourceRoot: __dirname 
