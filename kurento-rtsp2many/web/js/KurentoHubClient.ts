@@ -37,12 +37,16 @@ class KurentoHubClient {
         return this.connectionManager.state;
     } 
 
+    public getVersion(): Promise<Protocol.IKurentoHubVersion> {
+        return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.getVersion));
+    }
+
     public register(): Promise<Protocol.IClientId> {
         return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.register));
     }
 
-    public connectToStream(streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
-        return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.connectToStream, [streamUrl, sdpOffer]));
+    public connectToStream(client: Protocol.IClientId, streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
+        return this.handleRpcError(this.connectionManager.session.call(KurentoHubRpcNames.connectToStream, [client, streamUrl, sdpOffer]));
     }
 
     private handleRpcError<T>(rpcPromise: Promise<T>): Promise<T> {

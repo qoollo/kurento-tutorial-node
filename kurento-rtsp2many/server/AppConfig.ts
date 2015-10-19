@@ -6,6 +6,13 @@ export enum EnvMode {
 
 export var config = {
     mode: EnvMode.Development,
+    
+    version: <Protocol.IKurentoHubVersion>{
+        version: '0.1.0',        
+        capabilities: {
+            authorization: false
+        }
+    },
 
     kurentoMediaServer: {
         wsUrlTemplate: (domain: string): string => `ws://${domain}:8888/kurento`,

@@ -34,6 +34,7 @@ class KurentoServer {
 	public getPlayer(streamUrl: string): Promise<KurentoPlayer> {
 		var player = this.players.filter(p => p.streamUrl == streamUrl)[0];
 		if (!player) {
+			this.logger.debug(`[KurentoServer.getPlayer()] creating new KurentoPlayer for stream ${streamUrl}.`)
 			player = new KurentoPlayer(this, streamUrl, this.logger);
 			this.players.push(player);
 		}

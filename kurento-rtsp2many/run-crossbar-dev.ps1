@@ -154,7 +154,7 @@ if ($startCrossbar) {
     Remove-Item ($PSScriptRoot + "\.crossbar\*.pid");
     
     Write-Host "Crossbar running here. Press ""Ctrl + c"" to stop it.";
-    [console]::TreatControlCAsInput = $true;
+    #[console]::TreatControlCAsInput = $true;
     & crossbar start --config config-dev.json --logtofile
     
 }
