@@ -73,7 +73,8 @@ class PlayerComponent {
     private onPlay() {
         var url = this.urlInputElement.value,
             client = getKurentoVideoConsumer();
-        client.playStream(url);
+        client.playStream(url)
+            .then(player => this.videoElement.src = player.src);
     }
 }
 

@@ -15,6 +15,7 @@ class KurentoVideoConsumer {
     private hub: KurentoHubClient = null;
     private webRtcPeer: Kurento.Utils.IWebRtcPeer = null;
     private sdpOffer: Promise<string> = null;
+    private sdpOffers: { streamUrl: string, webRtcPeer: Kurento.Utils.IWebRtcPeer, sdpOffer: string, sdpAnswer: string, src: string }[] = []
 
     public playStream(streamUrl: string): Promise<KurentoPlayer> {
         var promise: Promise<any>;
@@ -25,18 +26,44 @@ class KurentoVideoConsumer {
         return promise
             .then(() => this.authenticate())
             .then(c =>
-                this.getSdpOffer()
+                this.getSdpOffer(streamUrl)
                     .then(sdpOffer => {
                         this.logger.log('Got SdpOffer: ' + sdpOffer.substr(0, 20) + '...');
                         return this.hub.connectToStream(c, streamUrl, sdpOffer);
                     }))
             .then(response => {
                 this.logger.log('Got SdpAnswer: ' + response.sdpAnswer.substr(0, 20) + '...');
-                return new KurentoPlayer('');
+                var data = this.sdpOffers.filter(o => o.streamUrl == streamUrl)[0];
+                data.sdpAnswer = response.sdpAnswer;
+                return new Promise((resolve, reject) => {
+                    data.webRtcPeer.processSdpAnswer(response.sdpAnswer, () => {
+                        console.info('SdpAnswer processed');
+                        resolve(new KurentoPlayer(data.streamUrl, data.src));
+                    });
+                });
             });
     }
 
-    private getSdpOffer(): Promise<string> {
+    private getSdpOffer(streamUrl: string): Promise<string> {
+        var match = this.sdpOffers.filter(o => o.streamUrl == streamUrl)[0];
+        if (match)
+            return Promise.resolve(match.sdpOffer);
+
+        match = {
+            streamUrl: streamUrl,
+            sdpOffer: '',
+            sdpAnswer: '',
+            src: '',
+            webRtcPeer: null
+        };
+        this.sdpOffers.push(match);
+        return new Promise((resolve, reject) => {
+            match.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>match, function(sdpOffer) {
+                match.sdpOffer = sdpOffer;
+                resolve(sdpOffer);
+            });
+        });
+
         if (this.webRtcPeer === null) {
             this.sdpOffer = new Promise((resolve, reject) => {
                 this.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>{}, function(sdpOffer) {
