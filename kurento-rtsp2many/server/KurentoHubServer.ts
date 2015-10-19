@@ -27,8 +27,8 @@ class KurentoHubServer {
     private videoManager: VideoConnectionsManager;
     private db: KurentoHubDb;
 
-    constructor() {
-        this.db = new KurentoHubDb();
+    constructor(db: KurentoHubDb) {
+        this.db = db;
         this.videoManager = new VideoConnectionsManager(<any>logger);
     }
 
