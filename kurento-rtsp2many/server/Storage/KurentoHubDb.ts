@@ -1,8 +1,22 @@
 
+import AppConfig = require('../AppConfig'); 
+
+
 class KurentoHubDb {
 	
 	constructor() {
 		//	Mongo me! Mongo me someone!
+	}
+	
+	seedData(): Promise<any> {
+		return new Promise((resolve, reject) => {
+			AppConfig.config.kurentoMediaServer.defaultInstances.forEach((e, i) =>
+					this.kurentoServers.push({ 
+						_id: i.toString(),
+						url: AppConfig.config.kurentoMediaServer.wsUrlTemplate(e.domain) 
+					}));
+			resolve();
+		});
 	}
 	
 	getKurentoServers(): Promise<Storage.IKurentoServer[]> {
