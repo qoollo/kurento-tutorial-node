@@ -6,7 +6,7 @@ declare module Protocol {
     }
 
     interface IConnectToStreamResponse {
-        clientId: number;
+        clientId: IClientId;
         streamUrl: string;
         sdpAnswer: string;
     }

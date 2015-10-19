@@ -12,6 +12,7 @@ import WampCraCredentials = require('./WampCraCredentials');
 import KurentoHubDb = require('./Storage/KurentoHubDb');
 
 
+import VideoConnectionsManager = require('./VideoConnectionsManager');
 import MasterManager = require('./MasterManager');
 import Master = require('./Master');
 import ViewerManager = require('./ViewerManager');
@@ -23,10 +24,12 @@ import KurentoClientManager = require('./KurentoClientManager');
 class KurentoHubServer {
 
     private connectionManager: WampRouterConnectionManager;
+    private videoManager: VideoConnectionsManager;
     private db: KurentoHubDb;
 
     constructor() {
         this.db = new KurentoHubDb();
+        this.videoManager = new VideoConnectionsManager(<any>logger);
     }
 
     start(): Promise<void> {
@@ -62,13 +65,24 @@ class KurentoHubServer {
         return res;
     }
 
-    register(): Promise<Protocol.IClientId> {
+    private register(): Promise<Protocol.IClientId> {
         return this.db.registerVideoConsumer();
     }
 
-    connectToStream(client: Protocol.IClientId, streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
-        return this.addMasterIfNotExists(streamUrl)
-            .then(m => this.processAddViewer(1, m, streamUrl, sdpOffer));
+    private connectToStream(client: Protocol.IClientId, streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
+        return this.db.getRegisteredVideoConsumers()
+            .then(clients => clients.filter(c => c.clientId == client.clientId)[0])
+            .then(consumer => 
+                this.videoManager.connectClientToStream(consumer, sdpOffer, streamUrl)
+                    .then(connection => {
+                        return {
+                            clientId: client,
+                            streamUrl: streamUrl,
+                            sdpAnswer: connection.sdpAnswer
+                        }
+                    }));
+        //return this.addMasterIfNotExists(streamUrl)
+        //    .then(m => this.processAddViewer(1, m, streamUrl, sdpOffer));
     }
 
     private masterManager: MasterManager = new MasterManager();

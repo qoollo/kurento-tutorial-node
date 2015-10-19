@@ -1,6 +1,7 @@
 
 import KurentoServer = require('./KurentoServer');
 import PlayerStatus = require('./PlayerStatus');
+import VideoConnection = require('./VideoConnection');
 
 /**
  * Represents player that is playing stream inside remote Kurento Media Server
@@ -50,7 +51,7 @@ class KurentoPlayer {
                         return this.onPlayFailed(`An error occurred while creating media pipeline on ${this.toString() } - ${this.errorToString(err) }.`);
 
                     this.logger.debug('MediaPipeline created.');
-                    
+
                     this._pipeline = p;
 
                     this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, (err, player: Kurento.Client.IPlayerEndpoint) => {
@@ -66,6 +67,15 @@ class KurentoPlayer {
             });
         } else
             this.logger.error('KurentoPlayer.play(): unexpected PlayerStatus - ' + PlayerStatus[this._status]);
+    }
+
+    public createVideoConnection(client: Storage.IVideoConsumer, sdpOffer: string, callback: IVideoConnectionCallback) {
+        var connection = new VideoConnection(this, client, this.logger);
+        connection.connect(sdpOffer, this._pipeline, this._player, (err, sdpAnswer) => {
+            if (err)
+                return callback(err);
+            callback(null, connection);
+        });
     }
 
     private onPlayFailed(errorMessage: string): any {
@@ -102,6 +112,10 @@ class KurentoPlayer {
 
 interface IPlayCallback {
     (err, player?: Kurento.Client.IPlayerEndpoint): void;
+}
+
+interface IVideoConnectionCallback {
+    (err, connection?: VideoConnection): void;
 }
 
 export = KurentoPlayer;
