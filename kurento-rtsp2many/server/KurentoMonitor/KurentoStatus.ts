@@ -1,13 +1,12 @@
 import MonitStatus = require('./MonitStatus');
-import KurentoState = require('./KurentoState');
+import KurentoEventState = require('./KurentoEventState');
 
 class KurentoStatus{
-	constructor(monitStatus: MonitStatus){
-		
-		
+	constructor(monitStatus: MonitStatus){		
+		this.state = KurentoEventState.Unknown;
 	}
 	
-	public state: KurentoState;
+	public state: KurentoEventState;
 	
 	public status;
 	public isMonitored;

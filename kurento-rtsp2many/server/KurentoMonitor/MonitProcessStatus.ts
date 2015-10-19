@@ -1,3 +1,5 @@
+import MonitState = require("./MonitState");
+
 class MonitProcessStatus {
 	public uptime: number;
 	public memoryPercent: number;
@@ -5,6 +7,7 @@ class MonitProcessStatus {
 	public pid: number;
 	public ppid: number;
 	public children: number;
+	public state: MonitState;
 	
 	public constructor(serviceSrc: any) {
 		this.uptime = parseInt(serviceSrc.uptime[0], 10);
