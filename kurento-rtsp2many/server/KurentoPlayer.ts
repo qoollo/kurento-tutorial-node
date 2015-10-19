@@ -47,9 +47,12 @@ class KurentoPlayer {
             this._status = PlayerStatus.Creating;
             this.playCallbacks.push(callback);
 
-            this.server.client.then(kurentoClient => {
+            this.server.getClient((err, kurentoClient) => {
+                if (err)
+                    return this.onPlayFailed(`An error occurred while creating KurentoClient on ${this.toString() } - ${this.errorToString(err) }.`);
+
                 this.logger.debug('[KurentoPlayer.play()] kurentoClient acquired.');
-                
+
                 kurentoClient.create('MediaPipeline', (err, p) => {
                     if (err)
                         return this.onPlayFailed(`An error occurred while creating media pipeline on ${this.toString() } - ${this.errorToString(err) }.`);
