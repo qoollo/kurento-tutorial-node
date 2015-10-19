@@ -14,13 +14,14 @@
  */
 
 import ConsoleWrapper = require('./Console');
-var KurentoVideoConsumer = require('./KurentoVideoConsumer.js');
+import KurentoVideoConsumer = require('./KurentoVideoConsumer');
 
 var ws,
     video,
     webRtcPeer,
     streamUrl = 'rtsp://10.5.5.85/media/video1',
     client,
+    playerComponents: PlayerComponent[] = [],
     crossbarConfig = {
         "type": "web",
         "endpoint": {
@@ -58,17 +59,42 @@ var ws,
             }
         }
     };
+    
+class PlayerComponent {
+    constructor(private container: Element) {
+        this.videoElement = container.getElementsByTagName('video')[0];
+        this.videoElement.onplay = e => this.onPlay();
+        this.urlInputElement = container.getElementsByTagName('input')[0];
+    }
+    
+    private videoElement: HTMLVideoElement;
+    private urlInputElement: HTMLInputElement; 
+    
+    private onPlay() {
+        var url = this.urlInputElement.value,
+            client = getKurentoVideoConsumer();
+        client.playStream(url)
+            .then(player => this.videoElement.src = player.src);
+    }
+}
+
+function getKurentoVideoConsumer(): KurentoVideoConsumer {
+    if (!client) {
+        var address = (<HTMLInputElement>document.getElementById('wamp-router-domain')).value;
+        client = new KurentoVideoConsumer(address.substring(0, address.lastIndexOf(':')), console);
+    }
+    return client;    
+}
 
 window.onload = function () {
-    console = <any>(new ConsoleWrapper('console', console));
-    video = document.getElementById('video');
-
-    var address = (<HTMLInputElement>document.getElementById('app-server-address')).value;
-
-    client = new KurentoVideoConsumer(address.substring(0, address.lastIndexOf(':')), console);
-    client.playStream();
+    console = <any>(new ConsoleWrapper('console', console));    
+    var elements = document.getElementsByClassName('video-component');
+    for (var i = 0; i < elements.length; i++)
+        playerComponents.push(new PlayerComponent(elements[i]));
+     
     return;
 
+    var address = (<HTMLInputElement>document.getElementById('wamp-router-domain')).value;
     ws = new WebSocket('ws://' + address + '/control');
     ws.onmessage = function (message) {
         var parsedMessage = JSON.parse(message.data);
@@ -93,7 +119,7 @@ window.onload = function () {
                 else
                     console.error('Unrecognized message', parsedMessage);
         }
-    }
+    } 
 
     document.getElementById('call').onclick = onMasterClick;
     document.getElementById('viewer').onclick = onViewerClick;

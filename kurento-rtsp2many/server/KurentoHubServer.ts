@@ -1,6 +1,7 @@
 ﻿/// <reference path="Protocol/RpcResponses.d.ts" />
 
 import logger = require('./Logger');
+import AppConfig = require('./AppConfig');
 import autobahn = require('autobahn');
 import KurentoHubRpcNames = require('./KurentoHubRpcNames');
 import ConnectionState = require('./ConnectionState');
@@ -29,7 +30,7 @@ class KurentoHubServer {
 
     constructor(db: KurentoHubDb) {
         this.db = db;
-        this.videoManager = new VideoConnectionsManager(<any>logger);
+        this.videoManager = new VideoConnectionsManager(db, <any>logger);
     }
 
     start(): Promise<void> {
@@ -53,6 +54,7 @@ class KurentoHubServer {
 
     private registerRpcs(session: autobahn.Session): Promise<autobahn.IRegistration[]> {
         var res = Promise.all([
+            session.register(KurentoHubRpcNames.getVersion, (args, kwargs) => this.getVersion()),
             session.register(KurentoHubRpcNames.register, (args, kwargs) => this.register()),
             session.register(KurentoHubRpcNames.connectToStream, (args, kwargs) => this.connectToStream(args[0], args[1], args[2]))
         ]);
@@ -65,14 +67,28 @@ class KurentoHubServer {
         return res;
     }
 
+    private getVersion(): Promise<Protocol.IKurentoHubVersion> {
+        logger.debug('RPC called: getVersion');
+        return Promise.resolve(AppConfig.config.version);
+    }
+
     private register(): Promise<Protocol.IClientId> {
-        return this.db.registerVideoConsumer();
+        logger.debug('RPC called: register');
+        return this.db.registerVideoConsumer()
+            .then(r => {
+                logger.debug('RPC register succeeded. Result: ' + r.clientId);
+                return r;
+            }, err => {
+                logger.error('RPC register failed.' + err)
+                return Promise.reject(err);
+            })
     }
 
     private connectToStream(client: Protocol.IClientId, streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
+        logger.debug('RPC called: connectToStream');
         return this.db.getRegisteredVideoConsumers()
             .then(clients => clients.filter(c => c.clientId == client.clientId)[0])
-            .then(consumer => 
+            .then(consumer =>
                 this.videoManager.connectClientToStream(consumer, sdpOffer, streamUrl)
                     .then(connection => {
                         return {

@@ -7,20 +7,27 @@ import VideoConnection = require('./VideoConnection');
 
 class VideoConnectionsManager {
 	
-	private db: KurentoHubDb;
 	private serverBalancer: KurentoServerBalancer;
-	private kurentoServers: KurentoServer[] = [];
+	private kurentoServers: Promise<KurentoServer[]>;
 	
-	constructor(private logger: Console) {
-		this.db = new KurentoHubDb();
+	constructor(private db: KurentoHubDb, private logger: Console) {
 		this.serverBalancer = new KurentoServerBalancer(this.logger, this.db);
+		this.kurentoServers = this.getKurentoServers();
+	}
+		
+	public connectClientToStream(client: Storage.IVideoConsumer, sdpOffer: string, streamUrl: string): Promise<VideoConnection> {
+		return this.kurentoServers
+			.then(servers => this.serverBalancer.getServerForStream(streamUrl, servers))
+			.then(server =>  {
+				this.logger.debug(`[VideoConnectionsManager.connectClientToStream()] Server ${server.kurentoUrl} will be used.`);
+				return server.getPlayer(streamUrl)
+				 	.then(player => server.addVideoConnection(client, sdpOffer, player));
+			});
 	}
 	
-	public connectClientToStream(client: Storage.IVideoConsumer, sdpOffer: string, streamUrl: string): Promise<VideoConnection> {
-		return this.serverBalancer.getServerForStream(streamUrl, this.kurentoServers)
-			.then(server => 
-				server.getPlayer(streamUrl)
-				 	.then(player => server.addVideoConnection(client, sdpOffer, player)));
+	private getKurentoServers(): Promise<KurentoServer[]> {
+		return this.db.getKurentoServers()
+			.then(servers => servers.map(s => new KurentoServer(s.url, this.logger)));
 	}
 }
 

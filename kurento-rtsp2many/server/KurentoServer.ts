@@ -3,6 +3,7 @@ var KurentoClient: Kurento.Client.IKurentoClientConstructor = require('kurento-c
 import KurentoPlayer = require('./KurentoPlayer');
 import PlayerStatus = require('./PlayerStatus');
 import VideoConnection = require('./VideoConnection');
+import when = require('when');
 
 class KurentoServer {
 
@@ -24,6 +25,28 @@ class KurentoServer {
 	}
 	private _videoConnections: VideoConnection[] = [];
 
+	public getClient(callback: IGetClientCallback): void {
+		if (this._client !== null)
+			return callback(null, this._client);
+			
+		this._clientCallbacks.push(callback);
+		this.logger.debug(`[KurentoServer.getClient()] creating KurentoClient...`);
+		new KurentoClient(this._kurentoUrl, (error, kurentoClient: Kurento.Client.IKurentoClient) => {
+			if (error) {
+				var msg = `[KurentoServer.getClient()] Failed to create KurentoClient. ${error}`;
+				this.logger.error(msg);
+				this._clientCallbacks.forEach(c => c(msg))
+				return this._clientCallbacks.length = 0;
+			}
+			
+			this.logger.debug(`[KurentoServer.getClient()] KurentoClient created.`);
+			this._client = kurentoClient;
+			this._clientCallbacks.forEach(c => c(null, kurentoClient))
+			this._clientCallbacks.length = 0;
+		});
+	}
+	private _clientCallbacks: IGetClientCallback[] = [];
+	private _client: Kurento.Client.IKurentoClient = null;
 	public get client(): Promise<Kurento.Client.IKurentoClient> {
 		return this.clientPromise == null
 			? this.clientPromise = this.createInternalClient()
@@ -34,6 +57,7 @@ class KurentoServer {
 	public getPlayer(streamUrl: string): Promise<KurentoPlayer> {
 		var player = this.players.filter(p => p.streamUrl == streamUrl)[0];
 		if (!player) {
+			this.logger.debug(`[KurentoServer.getPlayer()] creating new KurentoPlayer for stream ${streamUrl}.`)
 			player = new KurentoPlayer(this, streamUrl, this.logger);
 			this.players.push(player);
 		}
@@ -57,7 +81,7 @@ class KurentoServer {
 			player.createVideoConnection(client, sdpOffer, (err, conn) => {
 				if (err)
 					return reject(err);
-				
+
 				this._videoConnections.push(conn);
 				resolve(conn);
 			});
@@ -65,14 +89,35 @@ class KurentoServer {
 	}
 
 	private createInternalClient(): Promise<Kurento.Client.IKurentoClient> {
+		var deferred = when.defer<Kurento.Client.IKurentoClient>();
+		this.logger.debug(`[KurentoServer.createInternalClient()] creating KurentoClient promise.`);
+		new KurentoClient(this._kurentoUrl, (error, kurentoClient: Kurento.Client.IKurentoClient) => {
+			if (error) {
+				this.logger.error(`[KurentoServer.createInternalClient()] Failed to create KurentoClient. ${error}`);
+				return deferred.reject(error);
+			}
+			this.logger.debug(`[KurentoServer.createInternalClient()] KurentoClient created. Resolving promise.`);
+			deferred.resolve(kurentoClient);
+		});
+		return deferred.promise;
+
+		this.logger.debug(`[KurentoServer.createInternalClient()] creating KurentoClient promise.`);
 		return new Promise((resolve, reject) => {
+			this.logger.debug(`[KurentoServer.createInternalClient()] creating KurentoClient.`);
 			new KurentoClient(this._kurentoUrl, (error, kurentoClient: Kurento.Client.IKurentoClient) => {
-				if (error)
+				if (error) {
+					this.logger.error(`[KurentoServer.createInternalClient()] Failed to create KurentoClient. ${error}`);
 					return reject(error);
+				}
+				this.logger.debug(`[KurentoServer.createInternalClient()] KurentoClient created. Resolving promise.`);
 				resolve(kurentoClient);
 			});
 		});
 	}
+}
+
+interface IGetClientCallback {
+	(err, client?: Kurento.Client.IKurentoClient): void;
 }
 
 export = KurentoServer;

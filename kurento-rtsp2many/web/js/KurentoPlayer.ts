@@ -1,7 +1,7 @@
 ﻿
 class KurentoPlayer /*extends EventTarget*/ {
 
-    constructor(streamUrl: string) {
+    constructor(streamUrl: string, public src: string) {
         //super();
         this._streamUrl = streamUrl;
     }
