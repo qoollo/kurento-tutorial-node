@@ -21,5 +21,10 @@ export var config = {
                 domain: '10.5.6.119'
             }
         ]
+    },
+    
+    monit: {
+        login: 'admin',
+        password: 'monit'
     }
 };

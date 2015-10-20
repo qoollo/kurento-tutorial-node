@@ -8,7 +8,7 @@ class MonitStatus {
 	public constructor(monitSrc: any) {
 		try {
 			this.systemStatus = new MonitSystemStatus(monitSrc);
-			this.processStatuses = monitSrc.service.filter((value, index, array) => value.$.type == '3')
+			this.processStatuses = monitSrc.service.filter((value, index, array) => value.name[0] == 'kurento')
 									.map((value, index, array) => new MonitProcessStatus(value));
 			
 		} catch (error) {
