@@ -94,7 +94,7 @@ class KurentoVideoConsumer {
 
     private static credentialsKey: string = 'KurentoHubClientCredentials';
 
-    private static crossbarConfig = {
+    public static crossbarConfig = {
         "type": "web",
         "endpoint": {
             "type": "tcp",

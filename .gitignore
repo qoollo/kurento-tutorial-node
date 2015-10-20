@@ -23,6 +23,7 @@ kurento-rtsp2many/web/js/**/*.js.map
 kurento-rtsp2many/web/index.js
 kurento-rtsp2many/tests/**/*.js
 kurento-rtsp2many/tests/**/*.js.map
+kurento-rtsp2many/release/
 
 # aquamed-kurento-rtsp2webrtc
 aquamed-kurento-rtsp2webrtc/script.js
