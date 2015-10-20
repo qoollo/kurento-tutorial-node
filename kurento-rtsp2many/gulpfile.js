@@ -8,7 +8,8 @@ var path = require('path');
 var install = require("gulp-install"),
 	console = require('better-console'),
 	merge = require('merge2'),
-	rename = require('gulp-rename');
+	rename = require('gulp-rename'),
+	clean = require('gulp-clean');
 	
 var tsProject = ts.createProject('tsconfig.json');
 
@@ -54,4 +55,14 @@ gulp.task('release-client', ['compile-ts'], function () {
         .pipe(browserify({}))
 		.pipe(rename('KurentoHubClient.js'))
         .pipe(gulp.dest('./release/client'));
+});
+
+gulp.task('release-server', ['compile-ts'], function () {
+	return gulp.src([
+		'./.crossbar/config.json',
+		'./server/**/*.js',
+		'./package.json',
+		'./README.md'], { base: "./" })
+		.pipe(clean({force: true}))
+		.pipe(gulp.dest('./release/server'));
 })
