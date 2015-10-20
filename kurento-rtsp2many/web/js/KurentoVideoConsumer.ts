@@ -16,13 +16,8 @@ class KurentoVideoConsumer {
     private players: KurentoPlayer[] = [];
 
     public playStream(streamUrl: string): Promise<KurentoPlayer> {
-        var promise: Promise<any>,
-            playerFactory = new KurentoPlayerFactory(this.logger, streamUrl);
-        if (this.hub.state == ConnectionState.NotCreated) {
-            promise = this.hub.start();
-        } else
-            promise = Promise.resolve();
-        return promise
+        var playerFactory = new KurentoPlayerFactory(this.logger, streamUrl);
+        return this.hub.ensureConnection()
             .then(() => this.authenticate())
             .then(c =>
                 this.getSdpOffer(playerFactory)

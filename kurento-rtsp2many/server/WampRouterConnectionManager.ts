@@ -31,11 +31,12 @@ class WampRouterConnectionManager {
     start(): Promise<autobahn.Session> {
         if (this.connectionState === ConnectionState.Connecting || this.connectionState === ConnectionState.Connected) {
             var err = 'WampRouterConnectionManager.start() cannot be called while WampRouterConnectionManager is started.';
-            this.logger.error(err);
-            throw new Error(err);
+            //this.logger.warn(err);
+            return this.startPromise;
         }
 
-        return this.createConnection()
+        this.connectionState = ConnectionState.Connecting;
+        return this.startPromise = this.createConnection()
             .then(c => {
                 this.connection = c;
                 return this.openConnection(c);
@@ -47,6 +48,7 @@ class WampRouterConnectionManager {
                 return Promise.reject(msg);
             });
     }
+    private startPromise: Promise<autobahn.Session> = null;
 
     stop(): Promise<void> {
         if (this.connectionState !== ConnectionState.Connected) {
@@ -89,10 +91,10 @@ class WampRouterConnectionManager {
 
     private createConnection(): Promise<autobahn.Connection> {
         var connectionOptions: autobahn.IConnectionOptions = this.credentials.setupAuth({
-            url: this.url,
-            realm: this.realm,
-        }),
-            connection = new autobahn.Connection(connectionOptions);
+                url: this.url,
+                realm: this.realm,
+            });
+        var connection = new autobahn.Connection(connectionOptions);
         return Promise.resolve(connection);
     }
 
