@@ -21,44 +21,7 @@ var ws,
     webRtcPeer,
     streamUrl = 'rtsp://10.5.5.85/media/video1',
     client,
-    playerComponents: PlayerComponent[] = [],
-    crossbarConfig = {
-        "type": "web",
-        "endpoint": {
-            "type": "tcp",
-            "port": 8080
-        },
-        "paths": {
-            "/": {
-                "type": "static",
-                "directory": "../web"
-            },
-            "ws": {
-                "type": "websocket"
-            },
-            "kurentoHub": {
-                "type": "websocket",
-                "auth": {
-                    "wampcra": {
-                        "type": "static",
-                        "users": {
-                            "KurentoHub": {
-                                "secret": "secret2",
-                                "role": "KurentoHub"
-                            },
-                            "VideoConsumer": {
-                                "secret": "prq7+YkJ1/KlW1X0YczMHw==",
-                                "role": "VideoConsumer",
-                                "salt": "salt123",
-                                "iterations": 100,
-                                "keylen": 16
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    };
+    playerComponents: PlayerComponent[] = [];
     
 class PlayerComponent {
     constructor(private container: Element) {
