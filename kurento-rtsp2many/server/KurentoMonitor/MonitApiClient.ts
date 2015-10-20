@@ -3,15 +3,17 @@ import xml2js = require('xml2js');
 import MonitUrl = require('./MonitUrl');
 import MonitStatus = require('./MonitStatus');
 import Logger = require('../Logger');
-
+import AppConfig = require('../AppConfig')
 
 class MonitApiClient {	
 	getMonitStatus(url: MonitUrl): Promise<MonitStatus> {
 		return new Promise<MonitStatus>((resolve, reject) => {
 			try {
 				var options = {
-					host: url.monitUrl.host,
-					path: url.monitUrl.path
+					host: url.monitUrl.hostname,
+					path: url.monitUrl.path,
+					port: url.monitUrl.port,
+					auth: AppConfig.config.monit.login + ':' + AppConfig.config.monit.password
 				};
 				var monitStatus: MonitStatus;
 				
