@@ -10,12 +10,18 @@ class MonitProcessStatus {
 	public state: MonitState;
 	
 	public constructor(serviceSrc: any) {
-		this.uptime = parseInt(serviceSrc.uptime[0], 10);
-		this.memoryPercent = parseFloat(serviceSrc.memory[0].percent[0]);
-		this.cpuLoad = parseFloat(serviceSrc.cpu[0].percent[0]);
-		this.pid = parseInt(serviceSrc.pid[0], 10);
-		this.ppid = parseInt(serviceSrc.ppid[0], 10);
-		this.children = parseInt(serviceSrc.children[0], 10);
+		this.uptime = (serviceSrc.uptime == undefined) ? undefined :
+			 parseInt(serviceSrc.uptime[0], 10);
+		this.memoryPercent = (serviceSrc.memory == undefined) ? undefined :
+			parseFloat(serviceSrc.memory[0].percent[0]);
+		this.cpuLoad = (serviceSrc.cpu == undefined) ? undefined :
+			parseFloat(serviceSrc.cpu[0].percent[0]);
+		this.pid = (serviceSrc.pid == undefined) ? undefined :
+			parseInt(serviceSrc.pid[0], 10);
+		this.ppid = (serviceSrc.ppid == undefined) ? undefined :
+			parseInt(serviceSrc.ppid[0], 10);
+		this.children = (serviceSrc.children == undefined) ? undefined :
+			parseInt(serviceSrc.children[0], 10);
 	}
 }
 

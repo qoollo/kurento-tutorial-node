@@ -25,6 +25,8 @@ export var config = {
     
     monit: {
         login: 'admin',
-        password: 'monit'
+        password: 'monit',
+        txtPath: '/_status',
+        xmlPath: '/_status?format=xml'
     }
 };
