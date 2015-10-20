@@ -13,6 +13,8 @@
  *
  */
 
+checkPromisesSupport();
+
 import express = require('express');
 import readline = require('readline');
 
@@ -72,3 +74,13 @@ function handleCtrlC(): void {
     });
 }
 
+/**
+ * Throws and loggs an error if Promise is not available in current runtime.
+ */
+function checkPromisesSupport() {
+    if (typeof Promise === 'undefined') {
+        var err = new Error('Promises are not supported by current V8 engine. Update Node.js.');
+        logger.error(err.message);   
+        throw err; 
+    }    
+}
