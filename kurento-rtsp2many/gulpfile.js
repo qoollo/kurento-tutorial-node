@@ -9,7 +9,7 @@ var install = require("gulp-install"),
 	console = require('better-console'),
 	merge = require('merge2'),
 	rename = require('gulp-rename'),
-	clean = require('gulp-clean');
+	cleanDest = require('gulp-clean-dest');
 	
 var tsProject = ts.createProject('tsconfig.json');
 
@@ -63,6 +63,6 @@ gulp.task('release-server', ['compile-ts'], function () {
 		'./server/**/*.js',
 		'./package.json',
 		'./README.md'], { base: "./" })
-		.pipe(clean({force: true}))
+		.pipe(cleanDest('./release/server'))
 		.pipe(gulp.dest('./release/server'));
 })
