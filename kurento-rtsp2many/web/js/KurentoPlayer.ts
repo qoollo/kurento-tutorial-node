@@ -1,15 +1,19 @@
 ﻿
 class KurentoPlayer /*extends EventTarget*/ {
 
-    constructor(streamUrl: string, public src: string) {
+    constructor(private _streamUrl: string, private webRtcPeer: Kurento.Utils.IWebRtcPeer) {
         //super();
-        this._streamUrl = streamUrl;
+        this._src = webRtcPeer.remoteVideo.src;
     }
+    
+    public get src(): string {
+        return this._src;
+    }
+    private _src: string;
 
     public get streamUrl(): string {
         return this._streamUrl;
     }
-    private _streamUrl: string;
 
     public play(): Promise<any> {
         return Promise.reject('Not implemented');
