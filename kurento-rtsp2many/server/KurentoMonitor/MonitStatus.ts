@@ -6,14 +6,9 @@ class MonitStatus {
 	public processStatuses: MonitProcessStatus[];
 	
 	public constructor(monitSrc: any) {
-		try {
-			this.systemStatus = new MonitSystemStatus(monitSrc);
-			this.processStatuses = monitSrc.service.filter((value, index, array) => value.name[0] == 'kurento')
-									.map((value, index, array) => new MonitProcessStatus(value));
-			
-		} catch (error) {
-			console.log(error);
-		}
+		this.systemStatus = new MonitSystemStatus(monitSrc);
+		this.processStatuses = monitSrc.service.filter((value, index, array) => value.name[0] == 'kurento')
+								.map((value, index, array) => new MonitProcessStatus(value));
 	}
 }
 
