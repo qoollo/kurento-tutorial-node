@@ -13,12 +13,11 @@ class KurentoVideoConsumer {
 
     private logger: Console;
     private hub: KurentoHubClient = null;
-    private webRtcPeer: Kurento.Utils.IWebRtcPeer = null;
-    private sdpOffer: Promise<string> = null;
-    private sdpOffers: { streamUrl: string, webRtcPeer: Kurento.Utils.IWebRtcPeer, sdpOffer: string, sdpAnswer: string, src: string }[] = []
+    private players: KurentoPlayer[] = [];
 
     public playStream(streamUrl: string): Promise<KurentoPlayer> {
-        var promise: Promise<any>;
+        var promise: Promise<any>,
+            playerFactory = new KurentoPlayerFactory(this.logger, streamUrl);
         if (this.hub.state == ConnectionState.NotCreated) {
             promise = this.hub.start();
         } else
@@ -26,52 +25,32 @@ class KurentoVideoConsumer {
         return promise
             .then(() => this.authenticate())
             .then(c =>
-                this.getSdpOffer(streamUrl)
+                this.getSdpOffer(playerFactory)
                     .then(sdpOffer => {
                         this.logger.log('Got SdpOffer: ' + sdpOffer.substr(0, 20) + '...');
                         return this.hub.connectToStream(c, streamUrl, sdpOffer);
                     }))
             .then(response => {
                 this.logger.log('Got SdpAnswer: ' + response.sdpAnswer.substr(0, 20) + '...');
-                var data = this.sdpOffers.filter(o => o.streamUrl == streamUrl)[0];
-                data.sdpAnswer = response.sdpAnswer;
+                playerFactory.setSdpAnswer(response.sdpAnswer);
                 return new Promise((resolve, reject) => {
-                    data.webRtcPeer.processSdpAnswer(response.sdpAnswer, () => {
-                        console.info('SdpAnswer processed');
-                        resolve(new KurentoPlayer(data.streamUrl, data.src));
+                    playerFactory.webRtcPeer.processSdpAnswer(response.sdpAnswer, () => {
+                        this.logger.info('SdpAnswer processed'); 
+                        var player = playerFactory.createPlayer();
+                        this.players.push(player);
+                        resolve(player);
                     });
                 });
             });
     }
 
-    private getSdpOffer(streamUrl: string): Promise<string> {
-        var match = this.sdpOffers.filter(o => o.streamUrl == streamUrl)[0];
-        if (match)
-            return Promise.resolve(match.sdpOffer);
-
-        match = {
-            streamUrl: streamUrl,
-            sdpOffer: '',
-            sdpAnswer: '',
-            src: '',
-            webRtcPeer: null
-        };
-        this.sdpOffers.push(match);
+    private getSdpOffer(playerFactory: KurentoPlayerFactory): Promise<string> {
         return new Promise((resolve, reject) => {
-            match.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>match, function(sdpOffer) {
-                match.sdpOffer = sdpOffer;
+            playerFactory.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>{}, function(sdpOffer) {
+                playerFactory.setSdpOffer(sdpOffer);
                 resolve(sdpOffer);
             });
         });
-
-        if (this.webRtcPeer === null) {
-            this.sdpOffer = new Promise((resolve, reject) => {
-                this.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>{}, function(sdpOffer) {
-                    resolve(sdpOffer);
-                });
-            });
-        }
-        return this.sdpOffer;
     }
 
     public dispose(): void {
@@ -115,7 +94,7 @@ class KurentoVideoConsumer {
 
     private static credentialsKey: string = 'KurentoHubClientCredentials';
 
-    private static crossbarConfig = {
+    public static crossbarConfig = {
         "type": "web",
         "endpoint": {
             "type": "tcp",
@@ -152,6 +131,36 @@ class KurentoVideoConsumer {
             }
         }
     };
+
+}
+
+class KurentoPlayerFactory {
+
+    constructor(private logger: Console, public streamUrl) {
+
+    }
+    
+    public createPlayer(): KurentoPlayer {
+        return new KurentoPlayer(this.streamUrl, this.webRtcPeer);
+    }
+
+    public webRtcPeer: Kurento.Utils.IWebRtcPeer = null;
+
+    public setSdpOffer(value: string): void {
+        if (this.sdpOffer !== null)
+            this.logger.warn('[KurentoPlayerFactory.setSdpOffer()] SdpOffer has already been set.');
+        else
+            this.sdpOffer = value;
+    }
+    private sdpOffer: string = null;
+
+    public setSdpAnswer(value: string): void {
+        if (this.sdpAnswer !== null)
+            this.logger.warn('[KurentoPlayerFactory.setSdpAnswer()] SdpAnswer has already been set.');
+        else
+            this.sdpAnswer = value;
+    }
+    private sdpAnswer: string;
 
 }
 

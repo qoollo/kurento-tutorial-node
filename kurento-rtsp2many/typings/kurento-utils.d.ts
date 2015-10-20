@@ -27,7 +27,12 @@ declare module Kurento.Utils {
             }
         };
         server: {
-            iceServers: any
+            iceServers: {
+                credential: any,
+                url: string, // e.g. "stun:stun.l.google.com:19302",
+                urls: string[], //  the same url in array...dunno why
+                username: string
+            }[]
         };
         options: {
             optional: [{
