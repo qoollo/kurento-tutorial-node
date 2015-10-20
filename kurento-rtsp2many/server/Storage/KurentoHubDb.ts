@@ -1,5 +1,6 @@
 
 import AppConfig = require('../AppConfig'); 
+import mongoose = require('mongoose');
 
 
 class KurentoHubDb {

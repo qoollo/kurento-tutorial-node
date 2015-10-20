@@ -21,5 +21,9 @@ export var config = {
                 domain: '10.5.6.119'
             }
         ]
+    },
+    
+    mongo: {
+      uri: 'mongodb://localhost/kurento-app-server',  
     }
 };
