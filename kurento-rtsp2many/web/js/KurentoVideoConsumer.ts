@@ -5,7 +5,7 @@ import KurentoPlayer = require('./KurentoPlayer');
 
 class KurentoVideoConsumer {
 
-    constructor(kurentoHubDomain: string, logger: Console = console) {
+    constructor(kurentoHubDomain: string, logger: Console = console, private app: string = 'web') {
         this.logger = logger;
 
         this.hub = new KurentoHubClient(KurentoVideoConsumer.crossbarConfig, kurentoHubDomain, logger);
@@ -81,15 +81,40 @@ class KurentoVideoConsumer {
     }
 
     retrieveCredentials(): Promise<Protocol.IClientId> {
-        var str = localStorage.getItem(KurentoVideoConsumer.credentialsKey),
-            res = <Protocol.IClientId>JSON.parse(str);
-        return Promise.resolve(res);
+        return new Promise<Protocol.IClientId>((resolve, reject)=>{
+         switch(this.app){
+            case 'web':
+               var str = localStorage.getItem(KurentoVideoConsumer.credentialsKey),
+                   res = <Protocol.IClientId>JSON.parse(str);
+                resolve(res);
+            break;
+            
+            case 'chrome':
+                window['chrome'].storage.local.get(KurentoVideoConsumer.credentialsKey, (cred)=>{
+                    resolve(<Protocol.IClientId>(cred[KurentoVideoConsumer.credentialsKey]));
+                });
+            break;
+            
+        }});
     }
 
     saveCredentials(credentials: Protocol.IClientId): Promise<void> {
-        var str = JSON.stringify(credentials);
-        localStorage.setItem(KurentoVideoConsumer.credentialsKey, str);
-        return <any>Promise.resolve();
+        var promise: Promise<void>;
+        
+        switch(this.app){
+            case 'web':
+                localStorage.setItem(KurentoVideoConsumer.credentialsKey, JSON.stringify(credentials));
+                promise =  <any>Promise.resolve();
+            break;
+            
+            case 'chrome':
+                var cred = {};
+                cred[KurentoVideoConsumer.credentialsKey] = credentials;
+                window['chrome'].storage.local.set(cred);
+            break;
+            
+        }
+        return 
     }
 
     private static credentialsKey: string = 'KurentoHubClientCredentials';
