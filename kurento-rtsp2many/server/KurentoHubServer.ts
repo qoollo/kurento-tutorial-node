@@ -51,6 +51,10 @@ class KurentoHubServer {
     public get state(): ConnectionState {
         return this.connectionManager.state;
     }
+    
+    public get videoConnections(): VideoConnectionsManager {
+        return this.videoManager;
+    }
 
     private registerRpcs(session: autobahn.Session): Promise<autobahn.IRegistration[]> {
         var res = Promise.all([

@@ -38,6 +38,22 @@ handleCtrlC();
 //  Static is served by Crossbar 
 //app.use(express.static(path.join(__dirname, 'static')));
 
+app.get('/', function (req, res) {
+  res.send('Hello World!');
+});
+app.get('/api/streams', (req, res) => {
+    kurentoHubServer
+        .videoConnections
+        .runningStreams
+        .then(streams => res.send(JSON.stringify(streams)))
+        .catch(err => res.status(500).send(err));
+});
+var server = app.listen(8082, 'localhost', () => {
+  var host = server.address().address;
+  var port = server.address().port;
+
+  console.log('API listening at http://%s:%s', host, port);
+});
 
 
 
