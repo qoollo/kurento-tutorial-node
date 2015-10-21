@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="img/kurento.png" type="image/png" />
+
+    <link rel="stylesheet"
+          href="bower_components/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet"
+          href="bower_components/ekko-lightbox/dist/ekko-lightbox.min.css">
+    <link rel="stylesheet" href="css/kurento.css">
+
+    <script src="bower_components/jquery/dist/jquery.min.js"></script>
+    <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="bower_components/ekko-lightbox/dist/ekko-lightbox.min.js"></script>
+    <script src="bower_components/adapter.js/adapter.js"></script>
+
+    <script src="bower_components/kurento-utils/js/kurento-utils.js"></script>
+
+    <title>KurentoHub Streams</title>
+</head>
+
+<body>
+    <header>
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse"
+                            data-target=".navbar-collapse"></button>
+                    <a class="navbar-brand" href=".">Kurento Tutorial</a>
+                </div>
+                <div>
+                    <ul class="nav navbar-nav">
+                        <li>
+                            <a href="streams.html" class="active">
+                                <span class="glyphicon glyphicon-film"></span> Streams
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="collapse navbar-collapse"
+                     id="bs-example-navbar-collapse-1">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="https://github.com/Kurento/kurento-tutorial-node/tree/master/kurento-one2many-call">
+                                <span class="glyphicon glyphicon-file"></span> Source Code
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="container">
+        
+        <br/>
+        <br/>
+        <br/>
+        
+		<ul id="streams-list" class="list-group">
+		
+		</ul>
+		
+		<script>
+			var apiUrl = 'http://' + window.location.hostname + ':8082/api/';
+			
+            $(function () {
+				$.get(apiUrl + 'streams')
+					.then(renderStreams, onRequestError);
+			});
+            
+            function renderStreams(streams) {
+                streams = JSON.parse(streams);
+                
+                function handler(stream) {
+                    return function () {
+                        killStream(stream);
+                    }
+                }
+                
+                for (var i = 0; i < streams.length; i++) {
+                    $('#streams-list').append(
+                        $('<li></li>')
+                            .addClass('list-group-item')
+                            .append(
+                                $('<div></div>')
+                                    .text(streams[i].streamUrl)
+                                    .append(
+                                        $('<button></button>')
+                                            .addClass('btn btn-danger')
+                                            .text('Kill')
+                                            .click(handler(streams[i]))
+                                    )));
+                }
+            }
+            
+            function onRequestError(err) {
+				alert('Error! ' + err);                
+            }
+            
+            function killStream(stream) {
+                console.log('Killing stream ' + stream.streamUrl + '...');
+                $.post(apiUrl + 'streams/delete')
+                    .then(function () { window.location.reload(); }, onRequestError);
+            }
+		</script>
+
+    <footer>
+        <div class="foot-fixed-bottom">
+            <div class="container text-center">
+                <hr />
+                <div class="row">&copy; 2014 Kurento</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <a href="http://www.urjc.es">
+                            <img src="img/urjc.gif"
+                                 alt="Universidad Rey Juan Carlos" height="50px" />
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.kurento.org">
+                            <img src="img/kurento.png"
+                                 alt="Kurento" height="50px" />
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.naevatec.com">
+                            <img src="img/naevatec.png"
+                                 alt="Naevatec" height="50px" />
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

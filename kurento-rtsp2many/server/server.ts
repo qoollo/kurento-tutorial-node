@@ -13,6 +13,8 @@
  *
  */
 
+checkPromisesSupport();
+
 import express = require('express');
 import readline = require('readline');
 
@@ -30,12 +32,53 @@ var app = express(),
 db.seedData()
     .then(() => kurentoHubServer.start())
     .then(() => logger.info('KurentoHub started.'));
-    
+
 handleCtrlC();
 
 //  Static is served by Crossbar 
 //app.use(express.static(path.join(__dirname, 'static')));
 
+app.get('/', function(req, res) {
+    res.send('Hello World!');
+});
+app.get('/api/streams', (req, res) => {
+    logger.debug('/api/streams');
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    kurentoHubServer
+        .videoConnections
+        .runningStreams
+        .then(streams => res.send(JSON.stringify(streams)))
+        .catch(err => res.status(500).send(err));
+});
+app.post('/api/streams/delete', (req, res) => {
+    logger.debug('/api/streams/delete');
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.send(JSON.stringify({resp: 'ok'}));
+    return;
+    kurentoHubServer
+        .videoConnections
+        .runningStreams
+        .then(streams => res.send(JSON.stringify(streams)))
+        .catch(err => res.status(500).send(err));
+});
+/*
+app.all('*', (req, res, next) => {
+    logger.debug('Access-Control-Allow-Origin');
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});*/
+var server = app.listen(8082, 'localhost', () => {
+    var host = server.address().address;
+    var port = server.address().port;
+
+    console.log('API listening at http://%s:%s', host, port);
+});
 
 
 
@@ -72,3 +115,13 @@ function handleCtrlC(): void {
     });
 }
 
+/**
+ * Throws and loggs an error if Promise is not available in current runtime.
+ */
+function checkPromisesSupport() {
+    if (typeof Promise === 'undefined') {
+        var err = new Error('Promises are not supported by current V8 engine. Update Node.js.');
+        logger.error(err.message);
+        throw err;
+    }
+}

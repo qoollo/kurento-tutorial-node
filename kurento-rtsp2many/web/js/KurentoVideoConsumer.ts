@@ -16,41 +16,64 @@ class KurentoVideoConsumer {
     private players: KurentoPlayer[] = [];
 
     public playStream(streamUrl: string): Promise<KurentoPlayer> {
-        var promise: Promise<any>,
-            playerFactory = new KurentoPlayerFactory(this.logger, streamUrl);
-        if (this.hub.state == ConnectionState.NotCreated) {
-            promise = this.hub.start();
-        } else
-            promise = Promise.resolve();
-        return promise
+        //if (this.playStreamPromise !== null)
+        //    return this.playStreamPromise.then(() => this.playStream(streamUrl)); 
+        
+        var playerFactory = new KurentoPlayerFactory(this.logger, streamUrl);
+        return this.playStreamPromise = this.hub.ensureConnection()
             .then(() => this.authenticate())
             .then(c =>
-                this.getSdpOffer(playerFactory)
+                /*this.getSdpOffer(playerFactory)
                     .then(sdpOffer => {
-                        this.logger.log('Got SdpOffer: ' + sdpOffer.substr(0, 20) + '...');
-                        return this.hub.connectToStream(c, streamUrl, sdpOffer);
-                    }))
+                            this.logger.log('Got SdpOffer: ' + sdpOffer.substr(0, 20) + '...');
+                            return this.hub.connectToStream(c, streamUrl, sdpOffer);
+                        }))*/
+                new Promise<Protocol.IConnectToStreamResponse>(resolve => {
+                    this.getSdpOfferCb(playerFactory, sdpOffer => {
+                            this.logger.log('Got SdpOffer: ' + sdpOffer.substr(0, 20) + '...');
+                            resolve(this.hub.connectToStream(c, streamUrl, sdpOffer));
+                        });
+                }))
             .then(response => {
                 this.logger.log('Got SdpAnswer: ' + response.sdpAnswer.substr(0, 20) + '...');
                 playerFactory.setSdpAnswer(response.sdpAnswer);
                 return new Promise((resolve, reject) => {
                     playerFactory.webRtcPeer.processSdpAnswer(response.sdpAnswer, () => {
-                        this.logger.info('SdpAnswer processed'); 
+                        this.logger.info('SdpAnswer processed');
                         var player = playerFactory.createPlayer();
                         this.players.push(player);
+                        this.playStreamPromise = null;
                         resolve(player);
                     });
                 });
             });
     }
+    private playStreamPromise: Promise<KurentoPlayer> = null;
 
     private getSdpOffer(playerFactory: KurentoPlayerFactory): Promise<string> {
-        return new Promise((resolve, reject) => {
+        if (this.sdpOfferPromise !== null)
+            return this.sdpOfferPromise.then(() => this.getSdpOffer(playerFactory));
+        
+        return this.sdpOfferPromise = new Promise((resolve, reject) => {
             playerFactory.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>{}, function(sdpOffer) {
                 playerFactory.setSdpOffer(sdpOffer);
+                this.sdpOfferPromise = null;
                 resolve(sdpOffer);
             });
         });
+    }
+    private sdpOfferPromise: Promise<string> = null;
+
+    private getSdpOfferCb(playerFactory: KurentoPlayerFactory, callback: (sdpOffer: string) => void): void {
+        playerFactory.webRtcPeer = kurentoUtils.WebRtcPeer.startRecvOnly(<any>{});
+        playerFactory.webRtcPeer.onsdpoffer = sdpOffer => {
+            debugger;
+            callback(sdpOffer);
+        };
+        playerFactory.webRtcPeer.onerror = err => {
+            debugger;
+            this.logger.error(err);
+        }
     }
 
     public dispose(): void {
@@ -164,7 +187,7 @@ class KurentoPlayerFactory {
     constructor(private logger: Console, public streamUrl) {
 
     }
-    
+
     public createPlayer(): KurentoPlayer {
         return new KurentoPlayer(this.streamUrl, this.webRtcPeer);
     }
@@ -185,7 +208,7 @@ class KurentoPlayerFactory {
         else
             this.sdpAnswer = value;
     }
-    private sdpAnswer: string;
+    private sdpAnswer: string = null;
 
 }
 

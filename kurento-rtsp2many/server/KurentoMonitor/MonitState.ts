@@ -1,6 +1,7 @@
 enum MonitState{
+	Unknown,
 	NotMonitoring,
-	Initialising,
+	Initializing,
 	Running
 }
 
