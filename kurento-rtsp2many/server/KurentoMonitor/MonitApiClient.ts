@@ -45,12 +45,13 @@ class MonitApiClient {
 						reject(error);
 					});
 					response.on('end', () => {
-						var res: MonitState[] = [];
-						var kurentoInd: number = txtSrc.indexOf("Process 'kurento'\n  status");
-						while (kurentoInd != -1) {
-							res.push(MonitApiClient.parseState(txtSrc, kurentoInd));
-							kurentoInd = txtSrc.indexOf("Process 'kurento'\n  status", kurentoInd + 1);	
-						};	
+						var kurentoProcesses = txtSrc.match("Process 'kurento'(.|\s)*?(?=System|Process|$)");
+						/*
+						 все куски, начинающиеся на Process 'kurento', и заканчивающиеся на
+						 Process, System или конец строки
+						*/
+						
+						var res = kurentoProcesses.map((value, index, array) => MonitApiClient.parseState(value));
 						Logger.debug('getTxtStatus resolved');
 						resolve(res);
 					});
@@ -110,17 +111,21 @@ class MonitApiClient {
 		});
 	};
 	
-	private static parseState(txtSrc: string, startNumber: number): MonitState {
-		var statusInd = txtSrc.indexOf('status', startNumber);
-		var charInd = statusInd + 6;
-		while (txtSrc[charInd] == ' ')
-			++charInd;
-		var testString = txtSrc.substr(charInd, 20);
-		if (testString.indexOf('Running') == 0)
+	private static parseState(processSrc: string): MonitState {
+		var statusString = processSrc.match("\n\s*status\s.*");
+		// ищем первую строку, в которой первое слово — status, и забираем её
+		if (statusString.length == 0)
+			return MonitState.Unknown;
+		var index = statusString[0].indexOf('status');
+		var dataString = statusString[0][index + 6];
+		while (dataString[index] == ' ' || dataString[index] == '\t')
+			++index;
+		var info = dataString.substr(index);
+		if (info.indexOf('Running') == 0)
 			return MonitState.Running;
-		else if (testString.indexOf('Not monitored') == 0)
+		else if (info.indexOf('Not monitored') == 0)
 			return MonitState.NotMonitoring;
-		else if (testString.indexOf('Initializing') == 0)
+		else if (info.indexOf('Initializing') == 0)
 			return MonitState.Initializing;
 		else
 			return MonitState.Unknown;
