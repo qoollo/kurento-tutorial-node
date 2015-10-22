@@ -1,11 +1,14 @@
 
+/// <reference path="./node/node.d.ts" />
+
 declare module Kurento.Client {
+    import * as events from 'events';
 
     interface ICallback<T> {
         (err: any, result: T): void;
     }
 
-    interface IMediaObject {
+    interface IMediaObject extends events.EventEmitter {
         /**
          * Childs of current object, all returned objects have parent set to current object
          *
