@@ -1,21 +1,25 @@
 import logger = require('../Logger');
-import MonitUrl = require('./MonitUrl');
-import KurentoStatus = require('./KurentoStatus');
+import MonitUrl = require('./Monit/MonitUrl');
+import KurentoStatus = require('./KurentoStatus/KurentoStatus');
 import KurentoHubDb = require('../Storage/KurentoHubDb');
-import MonitApiClient = require('./MonitApiCLient');
-import Monit = require('./Monit');
-import MonitStatus = require('./MonitStatus');
-import KurentoEventState = require('./KurentoEventState');
-
+import MonitApiClient = require('./MonitApi/MonitApiCLient');
+import Monit = require('./Monit/Monit');
+import MonitStatus = require('./MonitApi/MonitStatus');
+import MonitState = require('./MonitApi/MonitState');
+import KurentoEventState = require('./KurentoStatus/KurentoEventState');
+import IKurentoWatcher = require("./IKurentoWatcher/IKurentoWatcher");
 /*  
  *	Class to monitoring Kurentos by theirs Monits
  *  Get state for each kurento, generate event and write it to db. 
  */
 class KurentoHeartbeatMonitor{
-	constructor(private timer:any, 
-				private timeout: number){				
+	constructor(private timer:ITimer, 
+				private interval: number,
+				private kurentoWatcher: IKurentoWatcher){				
 		this.monitApi = new MonitApiClient();
 		this.db = new KurentoHubDb();
+		timer.setInterval(this.timerCallback, interval);
+		logger.log('info',`[KurentoHeartbeatMonitor] was started`)	
 	}
 	
 	public start(url: MonitUrl): void {
@@ -36,7 +40,7 @@ class KurentoHeartbeatMonitor{
 		}
 	}
 
-	private updateKurentoStatus(monit:Monit): void{
+	private updateKurentoStatus(monit: Monit): void{
 		this.getMonitStatusFromMonit(monit)
 			.then((monitStatus: MonitStatus) => {
 				return Promise.all([this.getKurentoStatusFromDB(monit), 
@@ -66,18 +70,23 @@ class KurentoHeartbeatMonitor{
 	}
 	
 	private analiseKurentoStatuses(dbStatus: KurentoStatus,mStatus: KurentoStatus): Promise<KurentoStatus>{
-		switch(dbStatus.state){
-			case KurentoEventState.Unknown:
-			
-			break;
-			case KurentoEventState.OnOffline:
-			
-			break;
-			case KurentoEventState.OnOnline:
-			break;
-			case KurentoEventState.OnRestart:
-			break;
-			
+		if(mStatus.uptime < dbStatus.uptime){
+			mStatus.eventState = KurentoEventState.OnRestart;	
+		}
+		else{
+			switch(dbStatus.state){
+				case MonitState.Unknown:
+					
+					break;
+				case MonitState.Initializing:
+					break;
+				case MonitState.NotMonitoring:
+					break;
+				case MonitState.Running:
+				
+					break;
+			}	
+				
 		}
 		return null;	
 	}

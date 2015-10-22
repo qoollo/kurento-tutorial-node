@@ -1,9 +1,9 @@
 import http = require('http');
 import xml2js = require('xml2js');
-import MonitUrl = require('./MonitUrl');
+import MonitUrl = require('../Monit/MonitUrl');
 import MonitStatus = require('./MonitStatus');
-import Logger = require('../Logger');
-import AppConfig = require('../AppConfig');
+import Logger = require('../../Logger');
+import AppConfig = require('../../AppConfig');
 import MonitState = require('./MonitState');
 
 class MonitApiClient {	

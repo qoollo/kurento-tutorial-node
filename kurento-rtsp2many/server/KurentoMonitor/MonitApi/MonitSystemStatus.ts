@@ -1,5 +1,3 @@
-import MonitUrl = require('./MonitUrl');
-
 class MonitSystemStatus {
 	public uptime: number;
 	public memoryPercent: number;
