@@ -43,6 +43,12 @@ class VideoConnectionsManager {
 			return res;
 		});
 	}
+	
+	public killStream(streamUrl): Promise<any> {		
+		return this.kurentoServers	
+			.then(servers => servers.filter(s => s.getVideoConnections().some(c => c.player.streamUrl == streamUrl)))
+			.then(servers => Promise.all(servers.map(s => s.removeVideoConnection(streamUrl))));
+	}
 
 	private getKurentoServers(): Promise<KurentoServer[]> {
 		return this.db.getKurentoServers()

@@ -84,6 +84,13 @@ class KurentoPlayer {
             callback(null, connection);
         });
     }
+    
+    public dispose(): Promise<any> {
+        return Promise.all([
+            this._player.release(),
+            this._pipeline.release()
+        ]);
+    }
 
     private onPlayFailed(errorMessage: string): any {
         this._status = PlayerStatus.NotCreated;

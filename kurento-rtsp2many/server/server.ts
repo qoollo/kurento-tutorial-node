@@ -42,8 +42,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'web')));
 
-
-var tempConnections = [
+var testMode = false, 
+    testConnections = [
     {
         streamUrl: "rtsp://10.5.5.85/media/video2",
         kurentoServerUrl: "ws://10.5.6.119:8888/kurento",
@@ -57,28 +57,31 @@ var tempConnections = [
 
 app.get('/api/streams', (req, res) => {
     logger.debug('GET /api/streams');
-    res.send(tempConnections);
-    return;
+    if (testMode) {
+        res.send(testConnections);
+        return;
+    }
     kurentoHubServer
         .videoConnections
         .runningStreams
-        .then(streams => res.send(JSON.stringify(streams)))
+        .then(streams => res.send(streams))
         .catch(err => res.status(500).send(err));
 });
 app.delete('/api/streams', (req, res) => {
     logger.debug('DELETE /api/delete');
-    var match = tempConnections.filter(c => c.streamUrl == req.body.streamUrl)[0];
-    if (match) { 
-        tempConnections.splice(tempConnections.indexOf(match));
-        res.send(200);
-    } else
-        res.status(404).send('Such stream was not found among running streams.');
-    return;
+    if (testMode) {
+        var match = testConnections.filter(c => c.streamUrl == req.body.streamUrl)[0];
+        if (match) { 
+            testConnections.splice(testConnections.indexOf(match));
+            res.send(200);
+        } else
+            res.status(404).send('Such stream was not found among running streams.');
+        return;
+    }
     kurentoHubServer
         .videoConnections
-        .runningStreams
-        .then(streams => res.send(JSON.stringify(streams)))
-        .catch(err => res.status(500).send(err));
+        .killStream(req.body.streamUrl)
+        .then(() => res.send(200), err => res.status(500).send(err))
 });
 /*
 app.all('*', (req, res, next) => {
