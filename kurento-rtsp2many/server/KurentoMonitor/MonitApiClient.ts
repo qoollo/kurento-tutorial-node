@@ -45,7 +45,7 @@ class MonitApiClient {
 						reject(error);
 					});
 					response.on('end', () => {
-						var kurentoProcesses = txtSrc.match("Process 'kurento'(.|\s)*?(?=System|Process|$)");
+						var kurentoProcesses = txtSrc.match(/Process 'kurento'(.|\s)*?(?=System|Process|$)/g);
 						/*
 						 все куски, начинающиеся на Process 'kurento', и заканчивающиеся на
 						 Process, System или конец строки
@@ -111,21 +111,23 @@ class MonitApiClient {
 		});
 	};
 	
+	private static statusName: string = 'status';
+	
 	private static parseState(processSrc: string): MonitState {
-		var statusString = processSrc.match("\n\s*status\s.*");
+		var statusString = processSrc.match(/\n\s*status\s.*/);
 		// ищем первую строку, в которой первое слово — status, и забираем её
-		if (statusString.length == 0)
+		if (statusString == null || statusString.length == 0)
 			return MonitState.Unknown;
-		var index = statusString[0].indexOf('status');
-		var dataString = statusString[0][index + 6];
+		var index = statusString[0].indexOf(MonitApiClient.statusName);
+		var dataString = statusString[0].substr(index + MonitApiClient.statusName.length);
 		while (dataString[index] == ' ' || dataString[index] == '\t')
 			++index;
-		var info = dataString.substr(index);
-		if (info.indexOf('Running') == 0)
+		var state = dataString.substr(index);
+		if (state.indexOf('Running') == 0)
 			return MonitState.Running;
-		else if (info.indexOf('Not monitored') == 0)
+		else if (state.indexOf('Not monitored') == 0)
 			return MonitState.NotMonitoring;
-		else if (info.indexOf('Initializing') == 0)
+		else if (state.indexOf('Initializing') == 0)
 			return MonitState.Initializing;
 		else
 			return MonitState.Unknown;
