@@ -16,7 +16,9 @@
 checkPromisesSupport();
 
 import express = require('express');
+import bodyParser = require('body-parser');
 import readline = require('readline');
+import path = require('path');
 
 import cfg = require('./AppConfig');
 import logger = require('./Logger');
@@ -35,29 +37,42 @@ db.seedData()
 
 handleCtrlC();
 
-//  Static is served by Crossbar 
-//app.use(express.static(path.join(__dirname, 'static')));
 
-app.get('/', function(req, res) {
-    res.send('Hello World!');
-});
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '..', 'web')));
+
+
+var tempConnections = [
+    {
+        streamUrl: "rtsp://10.5.5.85/media/video2",
+        kurentoServerUrl: "ws://10.5.6.119:8888/kurento",
+        clients: [
+            {
+                clientId: 1,
+                registerTime: "2015-10-22T07:00:33.665Z",
+                streamConnections: []
+            }]
+    }];
+
 app.get('/api/streams', (req, res) => {
-    logger.debug('/api/streams');
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    logger.debug('GET /api/streams');
+    res.send(tempConnections);
+    return;
     kurentoHubServer
         .videoConnections
         .runningStreams
         .then(streams => res.send(JSON.stringify(streams)))
         .catch(err => res.status(500).send(err));
 });
-app.post('/api/streams/delete', (req, res) => {
-    logger.debug('/api/streams/delete');
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    res.send(JSON.stringify({resp: 'ok'}));
+app.delete('/api/streams', (req, res) => {
+    logger.debug('DELETE /api/delete');
+    var match = tempConnections.filter(c => c.streamUrl == req.body.streamUrl)[0];
+    if (match) { 
+        tempConnections.splice(tempConnections.indexOf(match));
+        res.send(200);
+    } else
+        res.status(404).send('Such stream was not found among running streams.');
     return;
     kurentoHubServer
         .videoConnections
