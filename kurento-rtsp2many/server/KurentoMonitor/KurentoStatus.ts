@@ -14,6 +14,7 @@ class KurentoStatus{
 	public uptime;
 	public memory;
 	public cpu;	
+
 }
 
 export = KurentoStatus;
