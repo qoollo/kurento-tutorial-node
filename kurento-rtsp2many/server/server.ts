@@ -13,6 +13,7 @@
  *
  */
 
+import logger = require('./Logger');
 checkPromisesSupport();
 
 import express = require('express');
@@ -21,7 +22,6 @@ import readline = require('readline');
 import path = require('path');
 
 import cfg = require('./AppConfig');
-import logger = require('./Logger');
 import KurentoHubServer = require('./KurentoHubServer');
 import KurentoHubDb = require('./Storage/KurentoHubDb');
 
