@@ -3,6 +3,7 @@ import KurentoHubDb = require('./Storage/KurentoHubDb');
 import KurentoServerBalancer = require('./KurentoServerBalancer');
 import KurentoServer = require('./KurentoServer');
 import KurentoPlayer = require('./KurentoPlayer');
+import PlayerStatus = require('./PlayerStatus');
 import VideoConnection = require('./VideoConnection');
 
 class VideoConnectionsManager {
@@ -25,29 +26,28 @@ class VideoConnectionsManager {
 	}
 
 	public get runningStreams(): Promise<IVideoStream[]> {
-		return this.kurentoServers.then(servers => {
-			var res: IVideoStream[] = [];
-			servers.forEach(s => 
-				s.getVideoConnections().forEach(conn => {
-					var match = res.filter(e => e.streamUrl == conn.player.streamUrl)[0];
-					if (!match)
-						res.push({
-							streamUrl: conn.player.streamUrl,
-							kurentoServerUrl: s.kurentoUrl,
-							clients: [conn.client],
-							killInProgress: conn.killStarted
-						});
-					else
-						match.clients.push(conn.client);
+		return this.kurentoServers.then(servers =>
+			servers
+				.map(s => s.players)
+				.reduce((p, c) => p.concat(c), [])
+				.map(p => {
+					return {
+						streamUrl: p.streamUrl,
+						kurentoServerUrl: p.server.kurentoUrl,
+						clients: p.videoConnections.map(c => c.client),
+						killInProgress: p.status == PlayerStatus.Disposed
+					}
 				}));
-			return res;
-		});
 	}
-	
-	public killStream(streamUrl): Promise<any> {		
-		return this.kurentoServers	
-			.then(servers => servers.filter(s => s.getVideoConnections().some(c => c.player.streamUrl == streamUrl)))
-			.then(servers => Promise.all(servers.map(s => s.killVideoConnection(streamUrl))));
+
+	public killStream(streamUrl): Promise<any> {
+		return this.kurentoServers.then(servers => 
+			Promise.all(
+				servers.map(s => 
+					Promise.all(
+						s.players
+							.filter(p => p.streamUrl == streamUrl)
+							.map(p => p.dispose())))));
 	}
 
 	private getKurentoServers(): Promise<KurentoServer[]> {

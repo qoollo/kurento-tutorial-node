@@ -16,17 +16,17 @@ class KurentoServer {
 	}
 
 	public getVideoConnections(): VideoConnection[] {
-		return this.players.map(p => p.videoConnections).reduce((p, c) => p.concat(c), <VideoConnection[]>[]);
+		return this._players.map(p => p.videoConnections).reduce((p, c) => p.concat(c), <VideoConnection[]>[]);
 	}
 	public killVideoConnection(streamUrl: string): Promise<any> {
-		var match = this.players.filter(p => p.streamUrl == streamUrl)[0];
+		var match = this._players.filter(p => p.streamUrl == streamUrl)[0];
 		if (!match)
 			return Promise.reject(`Stream not found: KurentoServer "${this.kurentoUrl}" does not run stream "${streamUrl}".`);
 		if (match.status == PlayerStatus.Disposed)
 			return Promise.resolve(`Stream kill has already been initiated.`);
 
 		return match.dispose()
-			.then(() => this.players.splice(this.players.indexOf(match), 1));
+			.then(() => this._players.splice(this._players.indexOf(match), 1));
 	}
 
 	public getClient(callback: IGetClientCallback): void {
@@ -59,11 +59,11 @@ class KurentoServer {
 	private clientPromise: Promise<Kurento.Client.IKurentoClient> = null;
 
 	private getPlayer(streamUrl: string): Promise<KurentoPlayer> {
-		var player = this.players.filter(p => p.streamUrl == streamUrl)[0];
+		var player = this._players.filter(p => p.streamUrl == streamUrl)[0];
 		if (!player || player.status == PlayerStatus.Disposed) {
 			this.logger.debug(`[KurentoServer.getPlayer()] creating new KurentoPlayer for stream ${streamUrl}.`)
 			player = new KurentoPlayer(this, streamUrl, this.logger);
-			this.players.push(player);
+			this._players.push(player);
 		}
 		if (player.status == PlayerStatus.Created)
 			return Promise.resolve(player);
@@ -78,7 +78,10 @@ class KurentoServer {
 		}
 
 	}
-	private players: KurentoPlayer[] = [];
+	public get players(): KurentoPlayer[] {
+		return this._players;
+	}
+	private _players: KurentoPlayer[] = [];
 
 	public addVideoConnection(client: Storage.IVideoConsumer, sdpOffer: string, streamUrl: string): Promise<VideoConnection> {
 		return new Promise((resolve, reject) => {

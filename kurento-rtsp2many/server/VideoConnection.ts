@@ -23,11 +23,6 @@ class VideoConnection {
     }
     private _sdpAnswer: string;
     
-    public get killStarted(): boolean {
-        return this._killStarted;
-    }
-    private _killStarted: boolean;
-
     private _webRtcEndpoint: Kurento.Client.IWebRtcEndpoint;
 
     public connect(
@@ -35,6 +30,12 @@ class VideoConnection {
         mediaPipeline: Kurento.Client.IMediaPipeline,
         playerEndpoint: Kurento.Client.IPlayerEndpoint,
         callback: IConnectCallback) {
+            
+        if (this.disposed) {
+            var msg = 'VideoConnection.connect() cannot ba called on a disposed VIdeoConnection.';
+            this.logger.error(msg, { 'class': 'VideoConnection', method: 'connect' });
+            return callback(msg);
+        }
 
         mediaPipeline.create('WebRtcEndpoint', (err, webRtcEndpoint) => {
             if (err)
@@ -90,10 +91,17 @@ class VideoConnection {
         });
     }
     
-    public kill(): Promise<any> {
-        this.killStarted = true;
-        return this.player.dispose();
+    dispose(): Promise<any>  {
+        if (this.disposed)
+            return Promise.resolve();
+            
+        this.disposed = true;
+        if (this._webRtcEndpoint)
+            return this._webRtcEndpoint.release();
+        
+        return Promise.resolve();
     }
+    private disposed: boolean = false;
 }
 
 interface IConnectCallback {

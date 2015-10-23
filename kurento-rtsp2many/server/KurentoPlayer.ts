@@ -104,8 +104,8 @@ class KurentoPlayer {
         this._pipeline.removeListener('error', this.mediaPipelineErrorListener);
         return Promise.all([
             this._player.release(),
-            this._pipeline.release()
-        ]);
+            this._pipeline.release()            
+        ].concat(this._videoConnections.map(c => c.dispose())));
     }
 
     private onPlayFailed(errorMessage: string): any {
