@@ -2,6 +2,7 @@ import AppConfig = require('../AppConfig');
 import mongoose = require('mongoose');
 import logger = require('../Logger');
 import Monitor = require('../KurentoMonitor/Monitor');
+import Model = require('./Model');
 
 interface IVideoConsumer extends Storage.IVideoConsumer, mongoose.Document { }
 interface IKurentoServer extends Storage.IKurentoServer, mongoose.Document  { }
@@ -14,9 +15,10 @@ class KurentoHubDb {
 	private monitModels : mongoose.Model<IMonit>;
 	
 	constructor() {
+		
 		logger.info("Trying connect to database.");
 		
-		mongoose.connect(AppConfig.config.mongo.uri);
+		mongoose.connect(AppConfig.config.mongodb.uri);
 		var db = mongoose.connection;
 		
 		db.on('error', (err) => {

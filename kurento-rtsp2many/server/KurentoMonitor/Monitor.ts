@@ -1,14 +1,12 @@
-import MonitState = require("./MonitState");
-import KurentoEventState = require('./KurentoEventState');
+import MonitState = require('./MonitApi/MonitState');
+import KurentoEventState = require('./KurentoStatus/KurentoEventState');
 
 declare module Monitor {
 	
 	interface IKurentoStatus {
-			state: KurentoEventState;
-	
-			status : MonitState;
-			isMonitored : boolean;
-			isPending : boolean;
+			eventState: KurentoEventState;
+			state : MonitState;
+			time : Date;
 			uptime : number;
 			memory : number;
 			cpu : number;	

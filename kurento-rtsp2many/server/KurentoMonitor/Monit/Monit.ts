@@ -1,6 +1,6 @@
 import MonitUrl = require('./MonitUrl');
-import KurentoStatus = require('./KurentoStatus');
-import Monitor = require('./Monitor');
+import KurentoStatus = require('../KurentoStatus/KurentoStatus');
+import Monitor = require('../Monitor');
 
 /*
  * Class represents a Monit instance to monitoring with some url
