@@ -46,7 +46,7 @@ class KurentoServerBalancer {
 		var res: Storage.IKurentoServer = null,
 			match = connections.filter(c => c.streamUrl == streamUrl)[0];
 		if (match)
-			res = servers.filter(s => s._id == match.kurentoServer_id)[0];
+			res = servers.filter(s => s.__id == match.kurentoServerId)[0];
 		return res;
 	}
 
@@ -56,7 +56,7 @@ class KurentoServerBalancer {
 			server: Storage.IKurentoServer,
 			streams: number
 		}[] = servers.map(s => { return { server: s, streams: 0 } });
-		connections.forEach(c => loads.filter(l => l.server._id == c.kurentoServer_id)[0].streams++);
+		connections.forEach(c => loads.filter(l => l.server.__id == c.kurentoServerId)[0].streams++);
 		loads.sort((a, b) => a.streams - b.streams);
 		return loads[0].server;
 	}

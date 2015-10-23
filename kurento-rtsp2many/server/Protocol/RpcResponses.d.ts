@@ -9,7 +9,7 @@ declare module Protocol {
     }
 
     interface IClientId {
-        clientId: number;
+        clientId: string;
     }
 
     interface IConnectToStreamResponse {

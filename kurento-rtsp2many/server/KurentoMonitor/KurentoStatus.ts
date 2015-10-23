@@ -1,7 +1,8 @@
 import MonitStatus = require('./MonitStatus');
 import KurentoEventState = require('./KurentoEventState');
+import Monitor = require('./Monitor');
 
-class KurentoStatus{
+class KurentoStatus implements Monitor.IKurentoStatus{
 	constructor(monitStatus: MonitStatus){		
 		this.state = KurentoEventState.Unknown;
 	}
