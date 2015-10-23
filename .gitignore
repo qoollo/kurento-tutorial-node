@@ -18,6 +18,7 @@ logs/
 kurento-rtsp2many/server.js
 kurento-rtsp2many/server/**/*.js
 kurento-rtsp2many/server/**/*.js.map
+kurento-rtsp2many/server/KurentoHub.config.json
 kurento-rtsp2many/web/js/**/*.js
 kurento-rtsp2many/web/js/**/*.js.map
 kurento-rtsp2many/web/index.js

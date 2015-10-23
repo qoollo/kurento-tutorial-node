@@ -60,6 +60,7 @@ class KurentoPlayer {
                     this.logger.debug('MediaPipeline created.');
 
                     this._pipeline = p;
+                    this._pipeline.addListener('error', this.mediaPipelineErrorListener);
 
                     this._pipeline.create("PlayerEndpoint", { uri: this._streamUrl }, (err, player: Kurento.Client.IPlayerEndpoint) => {
                         if (err)
@@ -68,6 +69,7 @@ class KurentoPlayer {
                         this.logger.debug(`PlayerEndpoint created on ${this.toString() }.`);
 
                         this._player = player;
+                        this._player.addListener('error', err => this.playerEndpointErrorListener);
                         this.onPlaySucceeded(player);
                     })
                 });
@@ -86,6 +88,8 @@ class KurentoPlayer {
     }
     
     public dispose(): Promise<any> {
+        this._player.removeListener('error', this.playerEndpointErrorListener);
+        this._pipeline.removeListener('error', this.mediaPipelineErrorListener);
         return Promise.all([
             this._player.release(),
             this._pipeline.release()
@@ -105,6 +109,16 @@ class KurentoPlayer {
         this.playCallbacks.forEach(c => c(null, player));
         return this.playCallbacks.length = 0;
     }
+    
+    private onPlayerEndpointError(err: any): void {
+        this.logger.error(`[KurentoPlayer.onPlayerEndpointError] Error in PlayerEndpoint playing stream "${this._streamUrl}" on KMS "${this._kurentoServer}": ${this.errorToString(err)}.`);
+    }
+    private playerEndpointErrorListener: (err)=> any = err => this.onPlayerEndpointError(err);    
+    
+    private onMediaPipelineError(err: any): void {
+        this.logger.error(`[KurentoPlayer.onMediaPipelineError] Error in MediaPipeline on KMS "${this._kurentoServer}": ${this.errorToString(err)}.`);
+    }
+    private mediaPipelineErrorListener: (err)=> any = err => this.onPlayerEndpointError(err);
 
     private errorToString(err: any): string {
         var res: string = '';

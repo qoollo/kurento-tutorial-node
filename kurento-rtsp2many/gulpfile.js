@@ -61,6 +61,7 @@ gulp.task('release-server', ['compile-ts'], function () {
 	return gulp.src([
 		'./.crossbar/config.json',
 		'./server/**/*.js',
+		'./web/**/*.*',
 		'./package.json',
 		'./README.md'], { base: "./" })
 		.pipe(cleanDest('./release/server'))
