@@ -29,6 +29,7 @@
     "gulp-sourcemaps": "^1.5.2",
     "gulp-typescript": "^2.8.2",
     "gulp-watch": "^4.3.5",
+    "jasmine": "^2.3.2",
     "merge2": "^0.3.6",
     "rename": "^1.0.3",
     "typescript": "^1.6.0-beta"

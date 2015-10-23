@@ -104,7 +104,7 @@ class KurentoHubServer {
      */
     private getVersion(): Promise<Protocol.IKurentoHubVersion> {
         logger.debug('RPC called: getVersion');
-        return Promise.resolve(AppConfig.config.version);
+        return Promise.resolve(AppConfig.config.get().version);
     }
 
     /**

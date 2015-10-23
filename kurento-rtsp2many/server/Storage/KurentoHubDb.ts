@@ -10,8 +10,8 @@ class KurentoHubDb {
 
 	seedData(): Promise<any> {
 		return new Promise((resolve, reject) => {
-			AppConfig.config.kurentoMediaServer.defaultInstances.forEach((e, i) => {
-				var template = AppConfig.config.kurentoMediaServer.wsUrlTemplate,
+			AppConfig.config.get().kurentoMediaServer.defaultInstances.forEach((e, i) => {
+				var template = AppConfig.config.get().kurentoMediaServer.wsUrlTemplate,
 					getAddress = srv => {
 						var res = template;
 						for (var f in srv) {
