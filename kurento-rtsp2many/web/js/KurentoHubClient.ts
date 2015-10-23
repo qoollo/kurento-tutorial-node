@@ -20,17 +20,26 @@ class KurentoHubClient {
     }
 
     start(): Promise<void> {
-        return this.connectionManager.start()
+        return this.startPromise = this.connectionManager.start()
             .then(s => this.logger.info('Connection to KurentoHub established successfully. Session #' + s.id))
             .catch(err => {
                 var msg = 'Failed to establish connection with KurentoHub. ' + (err.message || err);
                 this.logger.log(msg);
+                this.startPromise = null;
                 return Promise.reject(msg);
             });
     }
+    private startPromise: Promise<void> = null;
 
     stop(): Promise<void> {
         return this.connectionManager.stop();
+    }
+    
+    public ensureConnection(): Promise<void> {
+        if (this.startPromise !== null)
+            return this.startPromise;
+        
+        return this.start();
     }
 
     public get state(): ConnectionState {

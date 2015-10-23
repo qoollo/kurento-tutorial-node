@@ -55,6 +55,12 @@ window.onload = function () {
     for (var i = 0; i < elements.length; i++)
         playerComponents.push(new PlayerComponent(elements[i]));
      
+    document.getElementById('btn-play-all').onclick = () => {
+        var videos = document.getElementsByTagName('video');
+        for (var i = 0; i < videos.length; i++)
+            videos[i].play();
+    };
+     
     return;
 
     var address = (<HTMLInputElement>document.getElementById('wamp-router-domain')).value;

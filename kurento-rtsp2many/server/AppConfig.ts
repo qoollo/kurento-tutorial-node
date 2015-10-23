@@ -1,10 +1,14 @@
 ﻿
+import fs = require('fs');
+import path = require('path');
+
 export enum EnvMode {
     Development,
     Production
 }
 
-export var config = {
+var configFilePath = path.join(path.dirname(require.main.filename), 'KurentoHub.config.json'),
+    defaultConfig = {
     mode: EnvMode.Development,
     
     version: <Protocol.IKurentoHubVersion>{
@@ -15,15 +19,30 @@ export var config = {
     },
 
     kurentoMediaServer: {
-        wsUrlTemplate: (domain: string): string => `ws://${domain}:8888/kurento`,
+            wsUrlTemplate: 'ws://${domain}:8888/kurento',
         defaultInstances: [
             {
                 domain: '10.5.6.119'
             }
         ]
+        },
+
+        monit: {
+            login: 'admin',
+            password: 'monit',
+            txtPath: '/_status',
+            xmlPath: '/_status?format=xml'
+        }
     },
+    actualConfig = defaultConfig;
     
-    mongo: {
-      uri: 'mongodb://localhost/kurento-app-server',  
+if (fs.existsSync(configFilePath)) 
+    actualConfig = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+else
+    fs.writeFileSync(configFilePath, JSON.stringify(defaultConfig, null, 4), { encoding: 'utf8' });
+
+function configFileExists(): boolean {
+    return fs.existsSync(configFilePath);
     }
-};
+
+export var config = actualConfig;

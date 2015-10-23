@@ -23,6 +23,14 @@ class KurentoServer {
 	public getVideoConnections(): VideoConnection[] {
 		return this._videoConnections.slice();
 	}
+	public removeVideoConnection(streamUrl: string): Promise<any> {
+		var match = this._videoConnections.filter(c => c.player.streamUrl == streamUrl)[0];
+		if (!match)
+			return Promise.reject(`Stream not found: KurentoServer "${this.kurentoUrl}" does not run stream "${streamUrl}".`);
+		
+		return match.player.dispose()
+			.then(() => this._videoConnections.splice(this._videoConnections.indexOf(match), 1));
+	}
 	private _videoConnections: VideoConnection[] = [];
 
 	public getClient(callback: IGetClientCallback): void {

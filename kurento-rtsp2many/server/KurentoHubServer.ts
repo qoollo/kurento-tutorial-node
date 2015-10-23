@@ -33,15 +33,12 @@ class KurentoHubServer {
         this.videoManager = new VideoConnectionsManager(db, <any>logger);
     }
 
-    start(): Promise<void> {
+    start(): Promise<any> {
         return new CrossbarConfig()
             .getKurentoHubUrl()
             .then(url => this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', new WampCraCredentials('KurentoHub', 'secret2'), logger))
             .then(m => m.start())
-            .then(s => this.registerRpcs(s))
-            .then(registrations => {
-                debugger;
-            });
+            .then(s => this.registerRpcs(s));
     }
 
     stop(): Promise<void> {
@@ -50,6 +47,10 @@ class KurentoHubServer {
 
     public get state(): ConnectionState {
         return this.connectionManager.state;
+    }
+    
+    public get videoConnections(): VideoConnectionsManager {
+        return this.videoManager;
     }
 
     private registerRpcs(session: autobahn.Session): Promise<autobahn.IRegistration[]> {
