@@ -36,7 +36,11 @@ class KurentoPlayer {
     private playCallbacks: IPlayCallback[] = [];
 
     play(callback: IPlayCallback) {
-        if (this._status == PlayerStatus.Created) {
+        if (this._status == PlayerStatus.Disposed) {
+            var err = 'KurentoPlayer cannot play video. It is disposed.';
+            this.logger.error(err, { 'class': 'KurentoPlayer', 'method': 'play' });
+            callback(err);            
+        } else if (this._status == PlayerStatus.Created) {
             this.logger.warn('[KurentoPlayer.play()] KurentoPlayer is already created. Returning existing one.');
             callback(null, this._player);
         } else if (this._status == PlayerStatus.Creating) {
@@ -83,11 +87,19 @@ class KurentoPlayer {
         connection.connect(sdpOffer, this._pipeline, this._player, (err, sdpAnswer) => {
             if (err)
                 return callback(err);
+                
+            this._videoConnections.push(connection);
             callback(null, connection);
         });
     }
     
+    public get videoConnections(): VideoConnection[] {
+        return this._videoConnections.slice();
+    }
+    private _videoConnections: VideoConnection[] = [];
+    
     public dispose(): Promise<any> {
+        this._status = PlayerStatus.Disposed;
         this._player.removeListener('error', this.playerEndpointErrorListener);
         this._pipeline.removeListener('error', this.mediaPipelineErrorListener);
         return Promise.all([

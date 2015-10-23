@@ -20,8 +20,7 @@ class VideoConnectionsManager {
 			.then(servers => this.serverBalancer.getServerForStream(streamUrl, servers))
 			.then(server => {
 				this.logger.debug(`[VideoConnectionsManager.connectClientToStream()] Server ${server.kurentoUrl} will be used.`);
-				return server.getPlayer(streamUrl)
-					.then(player => server.addVideoConnection(client, sdpOffer, player));
+				return server.addVideoConnection(client, sdpOffer, streamUrl);
 			});
 	}
 
