@@ -1,4 +1,4 @@
-﻿/// <reference path="Protocol/RpcResponses.d.ts" />
+﻿/// <reference path="Protocol/Protocol.d.ts" />
 
 import logger = require('./Logger');
 import AppConfig = require('./AppConfig');

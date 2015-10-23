@@ -22,6 +22,11 @@ class VideoConnection {
         return this._sdpAnswer;
     }
     private _sdpAnswer: string;
+    
+    public get killStarted(): boolean {
+        return this._killStarted;
+    }
+    private _killStarted: boolean;
 
     private _webRtcEndpoint: Kurento.Client.IWebRtcEndpoint;
 
@@ -83,6 +88,11 @@ class VideoConnection {
                 });
             });
         });
+    }
+    
+    public kill(): Promise<any> {
+        this.killStarted = true;
+        return this.player.dispose();
     }
 }
 

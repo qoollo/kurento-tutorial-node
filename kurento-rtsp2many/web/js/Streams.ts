@@ -49,12 +49,13 @@ module KurentoHub {
             this.streamUrl = ko.observable(rawObject.streamUrl);
             this.kurentoServerUrl = ko.observable(rawObject.kurentoServerUrl);
             this.clients = ko.observableArray<Protocol.IClientId>(rawObject.clients);
+            this.killInProgress = ko.observable(!!rawObject.killInProgress);
         }
 
         streamUrl: KnockoutObservable<string>;
         kurentoServerUrl: KnockoutObservable<string>;
         clients: KnockoutObservableArray<Protocol.IClientId>;
-        killInProgress: KnockoutObservable<boolean> = ko.observable(false);
+        killInProgress: KnockoutObservable<boolean>;
     }
 
     ko.applyBindings(new StreamsViewModel());

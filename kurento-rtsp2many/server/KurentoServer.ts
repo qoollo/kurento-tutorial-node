@@ -15,20 +15,17 @@ class KurentoServer {
 		return this._kurentoUrl;
 	}
 
-	public get streamUrls(): string[] {
-		return this._streamUrls;
-	}
-	private _streamUrls: string[] = [];
-
 	public getVideoConnections(): VideoConnection[] {
 		return this._videoConnections.slice();
 	}
-	public removeVideoConnection(streamUrl: string): Promise<any> {
+	public killVideoConnection(streamUrl: string): Promise<any> {
 		var match = this._videoConnections.filter(c => c.player.streamUrl == streamUrl)[0];
 		if (!match)
 			return Promise.reject(`Stream not found: KurentoServer "${this.kurentoUrl}" does not run stream "${streamUrl}".`);
+		if (match.killStarted)
+			return Promise.resolve(`Stream kill has already been initiated.`);
 		
-		return match.player.dispose()
+		return match.kill()
 			.then(() => this._videoConnections.splice(this._videoConnections.indexOf(match), 1));
 	}
 	private _videoConnections: VideoConnection[] = [];

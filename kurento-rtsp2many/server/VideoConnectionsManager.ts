@@ -35,7 +35,8 @@ class VideoConnectionsManager {
 						res.push({
 							streamUrl: conn.player.streamUrl,
 							kurentoServerUrl: s.kurentoUrl,
-							clients: [conn.client]
+							clients: [conn.client],
+							killInProgress: conn.killStarted
 						});
 					else
 						match.clients.push(conn.client);
@@ -47,7 +48,7 @@ class VideoConnectionsManager {
 	public killStream(streamUrl): Promise<any> {		
 		return this.kurentoServers	
 			.then(servers => servers.filter(s => s.getVideoConnections().some(c => c.player.streamUrl == streamUrl)))
-			.then(servers => Promise.all(servers.map(s => s.removeVideoConnection(streamUrl))));
+			.then(servers => Promise.all(servers.map(s => s.killVideoConnection(streamUrl))));
 	}
 
 	private getKurentoServers(): Promise<KurentoServer[]> {
@@ -60,6 +61,7 @@ interface IVideoStream {
 	streamUrl: string;
 	kurentoServerUrl: string;
 	clients: Protocol.IClientId[];
+	killInProgress: boolean;
 }
 
 export = VideoConnectionsManager;
