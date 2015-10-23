@@ -1,5 +1,5 @@
-import MonitUrl = require('../server/KurentoMonitor/MonitUrl');
-import MonitApiClient = require('../server/KurentoMonitor/MonitApiClient');
+import MonitUrl = require('../server/KurentoMonitor/Monit/MonitUrl');
+import MonitApiClient = require('../server/KurentoMonitor/MonitApi/MonitApiClient');
 
 try {
 	var res = new MonitApiClient().getMonitStatus(new MonitUrl('http://10.5.6.119:2812/_status?format=xml'));

@@ -101,7 +101,7 @@ class KurentoHeartbeatMonitor{
 	}
 
 	private raiseKurentoStatus(status: KurentoStatus): void{
-		switch(status.state)
+		switch(status.eventState)
 		{
 			case KurentoEventState.OnOffline:
 				this.raiseEvent(this.onOffline, status);

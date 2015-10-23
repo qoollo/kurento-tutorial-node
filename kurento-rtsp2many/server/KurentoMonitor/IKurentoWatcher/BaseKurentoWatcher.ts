@@ -7,13 +7,12 @@ export enum WatcherEvent{
 	Alarm	
 }
 
-export class BaseKurentoWatcher implements IKurentoWatcher{
+export abstract class BaseKurentoWatcher implements IKurentoWatcher{
 	constructor(protected logging: boolean = false, 
 				protected warn: (status: KurentoStatus) => any = null, 
 				protected alarm: (status: KurentoStatus) => any = null){
 	}
 	
-	protected logging;
 	
 	public abstract newStatus(status:KurentoStatus): void;		
 	
@@ -24,7 +23,7 @@ export class BaseKurentoWatcher implements IKurentoWatcher{
 					this.warn(status);
 				break;
 			case WatcherEvent.Alarm:
-				if(this.alert)
+				if(this.alarm)
 					this.alarm(status);
 				break;	
 		}

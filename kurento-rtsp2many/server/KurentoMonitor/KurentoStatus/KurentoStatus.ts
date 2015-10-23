@@ -1,4 +1,4 @@
-import MonitStatus = require('../Monit/MonitStatus');
+import MonitStatus = require('../MonitApi/MonitStatus');
 import MonitState = require('../MonitApi/MonitState');
 import KurentoEventState = require('./KurentoEventState');
 
@@ -6,12 +6,13 @@ class KurentoStatus{
 	constructor(monitStatus: MonitStatus){		
 		this.eventState = KurentoEventState.Unknown;
 		this.time = new Date();
-		var kurStatus = monitStatus ? monitStatus.processStatuses[0];
+		var statuses = monitStatus ? monitStatus.processStatuses : null;
+		var kurStatus = statuses ? statuses[0] : null;
 		
 		if(kurStatus){
+			this.state = kurStatus.state;
 			this.cpu = kurStatus.cpuLoad;
 			this.memory = kurStatus.memoryPercent;
-			this.state = kurStatus.state;
 			this.uptime = kurStatus.uptime;				
 		} 
 		else{
