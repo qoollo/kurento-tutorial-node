@@ -17,5 +17,13 @@ declare module Protocol {
         streamUrl: string;
         sdpAnswer: string;
     }
+    
+    interface IStreamsToRunChangedEventArgs {
+        StreamsToRun: IVideoStream[]
+    }
+    
+    interface IVideoStream {
+        Url: string;
+    }
 
 }
