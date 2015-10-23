@@ -70,8 +70,10 @@ class KurentoServer {
 		else {
 			return new Promise((resolve, reject) => {
 				player.play(err => {
-					if (err)
+					if (err) {
+						this._players.splice(this._players.indexOf(player, 1));
 						return reject(err);
+					}
 					resolve(player);
 				});
 			})

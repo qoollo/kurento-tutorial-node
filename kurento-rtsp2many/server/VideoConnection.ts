@@ -1,5 +1,6 @@
 
 import KurentoPlayer = require('./KurentoPlayer');
+import Utils = require('./Utils');
 
 class VideoConnection {
 
@@ -22,7 +23,7 @@ class VideoConnection {
         return this._sdpAnswer;
     }
     private _sdpAnswer: string;
-    
+
     private _webRtcEndpoint: Kurento.Client.IWebRtcEndpoint;
 
     public connect(
@@ -30,7 +31,7 @@ class VideoConnection {
         mediaPipeline: Kurento.Client.IMediaPipeline,
         playerEndpoint: Kurento.Client.IPlayerEndpoint,
         callback: IConnectCallback) {
-            
+
         if (this.disposed) {
             var msg = 'VideoConnection.connect() cannot ba called on a disposed VIdeoConnection.';
             this.logger.error(msg, { 'class': 'VideoConnection', method: 'connect' });
@@ -42,7 +43,7 @@ class VideoConnection {
                 return callback('An error occurred while trying to create WebRtc endpoint' + err.toString());
 
             this.logger.debug('WebRtcEndpoint created');
-            this._webRtcEndpoint = webRtcEndpoint;
+            this.setWebRtcEndpoint(webRtcEndpoint);
 
             var finalSdpAnswer = null,
                 playerPlaying = false;
@@ -90,15 +91,44 @@ class VideoConnection {
             });
         });
     }
-    
-    dispose(): Promise<any>  {
+
+    private setWebRtcEndpoint(webRtcEndpoint: Kurento.Client.IWebRtcEndpoint): void {
+        this._webRtcEndpoint = webRtcEndpoint;
+        this._webRtcEndpoint.addListener('MediaSessionStarted', ev => this.webRtcEndpointMediaSessionStartedListener(ev));
+        this._webRtcEndpoint.addListener('MediaSessionTerminated', ev => this.webRtcEndpointMediaSessionTerminatedListener(ev));
+        this._webRtcEndpoint.addListener('Error', err => this.webRtcEndpointErrorListener(err));
+    }
+
+    private onWebRtcEndpointError(err: any): void {
+        this.logger.error(`Error in WebRtcEndpoint. Stream: "${this._player.streamUrl}". Client: ${this._client.clientId}.`,
+            { 'class': 'VideoConnection', 'method': 'onWebRtcEndpointError', 'error': err });
+    }
+    private webRtcEndpointErrorListener: (err) => any = err => this.onWebRtcEndpointError(err);
+
+    private onWebRtcEndpointMediaSessionStarted(ev: any): void {
+        this.logger.info(`MediaSessionStarted for WebRtcEndpoint. Stream: "${this._player.streamUrl}". Client: ${this._client.clientId}.`,
+            { 'class': 'VideoConnection', 'method': 'onWebRtcEndpointMediaSessionStarted', 'event': ev });
+    }
+    private webRtcEndpointMediaSessionStartedListener: (err) => any = ev => this.onWebRtcEndpointMediaSessionStarted(ev);
+
+    private onWebRtcEndpointMediaSessionTerminated(ev: any): void {
+        this.logger.info(`MediaSessionTerminated for WebRtcEndpoint. Stream: "${this._player.streamUrl}". Client: ${this._client.clientId}.`,
+            { 'class': 'VideoConnection', 'method': 'onWebRtcEndpointMediaSessionTerminated', 'event': ev });
+    }
+    private webRtcEndpointMediaSessionTerminatedListener: (err) => any = ev => this.onWebRtcEndpointMediaSessionTerminated(ev);
+
+    dispose(): Promise<any> {
         if (this.disposed)
             return Promise.resolve();
-            
+
         this.disposed = true;
-        if (this._webRtcEndpoint)
+        if (this._webRtcEndpoint) {
+            this._webRtcEndpoint.removeListener('MediaSessionStarted', ev => this.webRtcEndpointMediaSessionStartedListener(ev));
+            this._webRtcEndpoint.removeListener('MediaSessionTerminated', ev => this.webRtcEndpointMediaSessionTerminatedListener(ev));
+            this._webRtcEndpoint.removeListener('Error', err => this.webRtcEndpointErrorListener(err));
             return this._webRtcEndpoint.release();
-        
+        }
+
         return Promise.resolve();
     }
     private disposed: boolean = false;

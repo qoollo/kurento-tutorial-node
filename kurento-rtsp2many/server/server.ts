@@ -60,7 +60,7 @@ var testMode = false,
     }];
 
 app.get('/api/streams', (req, res) => {
-    logger.debug('GET /api/streams');
+    logger.debug('[GET   ] /api/streams');
     if (testMode) {
         res.send(testConnections);
         return;
@@ -72,7 +72,7 @@ app.get('/api/streams', (req, res) => {
         .catch(err => res.status(500).send(err));
 });
 app.delete('/api/streams', (req, res) => {
-    logger.debug('DELETE /api/delete');
+    logger.debug('[DELETE] /api/delete ' + req.body.streamUrl);
     if (testMode) {
         var match = testConnections.filter(c => c.streamUrl == req.body.streamUrl)[0];
         if (match) { 
@@ -85,7 +85,7 @@ app.delete('/api/streams', (req, res) => {
     kurentoHubServer
         .videoConnections
         .killStream(req.body.streamUrl)
-        .then(() => res.send(200), err => res.status(500).send(err))
+        .then(() => res.sendStatus(200), err => res.status(500).send(err))
 });
 /*
 app.all('*', (req, res, next) => {
