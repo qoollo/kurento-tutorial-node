@@ -141,4 +141,4 @@ class KurentoHubDb {
 	
 }
 
-export = KurentoHubDb;
+export = new KurentoHubDb();

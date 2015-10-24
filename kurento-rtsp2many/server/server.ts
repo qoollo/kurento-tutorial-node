@@ -29,9 +29,11 @@ import KurentoHubDb = require('./Storage/KurentoHubDb');
 logger.info('KurentoHub initializing....');
 
 var app = express(),
-    db = new KurentoHubDb(),
+    db = KurentoHubDb,
     kurentoHubServer = new KurentoHubServer(db);
-db.seedData()
+
+db.connect()
+    .then(() => db.seedData())
     .then(() => kurentoHubServer.start())
     .then(() => logger.info('KurentoHub started.'));
 
