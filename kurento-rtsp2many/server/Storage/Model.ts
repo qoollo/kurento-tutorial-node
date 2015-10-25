@@ -48,8 +48,10 @@ var monitSchema: mongoose.Schema = new mongoose.Schema({
 	currentStatus: {
 		state: Number,
 		status: Number,
-		isMonitored: Boolean,
-		isPending: Boolean,
+		time: {
+			type: Date,
+			default: Date.now
+		},
 		uptime: Number,
 		memory: Number,
 		cpu: Number,
