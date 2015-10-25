@@ -23,18 +23,20 @@ import path = require('path');
 
 import cfg = require('./AppConfig');
 import KurentoHubServer = require('./KurentoHubServer');
-import KurentoHubDb = require('./Storage/KurentoHubDb');
+import DbProvider = require('./Storage/KurentoHubDbProvider');
 
 
 logger.info('KurentoHub initializing....');
 
 var app = express(),
-    db = KurentoHubDb,
+    db = null,
     kurentoHubServer = new KurentoHubServer(db);
 
-db.connect()
-    .then(() => db.seedData())
-    .then(() => kurentoHubServer.start())
+DbProvider.get()
+    .then((database) => {
+        db = database;
+        db.seedData();
+    }).then(() => kurentoHubServer.start())
     .then(() => logger.info('KurentoHub started.'));
 
 handleCtrlC();
