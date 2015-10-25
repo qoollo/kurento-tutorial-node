@@ -7,7 +7,7 @@ import Document = require('./Document.ts');
 import DbState = require('./DbState');
 
 class KurentoHubDb {
-	
+
 	private ACTION_WITH_DISCONNECTED_DB_ERROR = 'No connection to the database.';
 
 	public state: DbState;
@@ -17,11 +17,11 @@ class KurentoHubDb {
 		this.state = DbState.Disconnected;
 	}
 
-	connect(reconect : boolean = false): Promise<any> {
+	connect(reconect: boolean = false): Promise<any> {
 		logger.info("Trying connect to database.");
-		
+
 		if (this.state == DbState.Disconnected || reconect) {
-			
+
 			this.lastConnectionPromise = new Promise((resolve, reject) => {
 				logger.info("Creating new connection to KurentoDb.");
 
@@ -41,22 +41,26 @@ class KurentoHubDb {
 				db.once('open', () => {
 					logger.info("Connected to database.");
 					resolve();
-					
+
 					this.state = DbState.Connected;
 				});
 			})
 		}
 		else
-			logger.warn("Already connected to database.");	
-			
+			logger.warn("Already connected to database.");
+
 		return this.lastConnectionPromise;
 	}
 
 	seedData(): Promise<any> {
 		if (this.state != DbState.Connected)
 			return Promise.reject(this.ACTION_WITH_DISCONNECTED_DB_ERROR);
-		
+
+		logger.info("Trying seed data.");
 		return new Promise((resolve, reject) => {
+			var savePromises = [],
+				errors = [];
+
             AppConfig.config.kurentoMediaServer.defaultInstances.forEach((e, i) => {
                 var template = AppConfig.config.kurentoMediaServer.wsUrlTemplate,
                     getAddress = srv => {
@@ -67,47 +71,68 @@ class KurentoHubDb {
                         return res;
                     };
 
-                var kurentoSer = new Model.KurentoServer({
+				var kurentoSer = {
                     __id: i.toString(),
                     url: getAddress(e)
-                })
+                }
 
-				kurentoSer.save((err, server: Document.IKurentoServerDocument) => {
-					if (err)
-						err;
-					//нормального обработчика сюда! ТУТ Pi@#&*
+				var savePromiseHandler = (res, rej) => {
+					new Model.KurentoServer(kurentoSer)
+						.save((err, server: Document.IKurentoServerDocument) => {
+							if (err) {
+								logger.error('An error occurred while saving kurento-server.', err);
+								errors.push({
+									data: kurentoSer,
+									error: err
+								})
+								rej(err);
+							}
+							else
+								res();
+						});
+				}
 
+				Model.KurentoServer.findOne(kurentoSer, (error, res) => {
+					if (res)
+						logger.info("During seeding it emerged that some of the data already exist", kurentoSer);
+					else
+						savePromises.push( new Promise(savePromiseHandler))
 				})
 			})
 
-			resolve();
+			Promise.all(savePromises).then(resolve, () => { reject(errors) })
+			logger.info("Seeding complete.");
 		});
 	}
 
 	getKurentoServers(): Promise<Storage.IKurentoServer[]> {
 		if (this.state != DbState.Connected)
 			return Promise.reject(this.ACTION_WITH_DISCONNECTED_DB_ERROR);
-		
+
 		return new Promise((resolve, reject) => {
 			Model.KurentoServer.find((err, servers) => {
 
-				if (err)
-					reject(err); // И СЮДА!
-					
+				if (err) {
+					logger.error('An error occurred while getting kurento-servers.', err);
+					reject(err);
+				}
+
 				resolve(servers);
 			})
 		});
 	}
-	
+
 	getRegisteredVideoConsumers(): Promise<Storage.IVideoConsumer[]> {
 		if (this.state != DbState.Connected)
 			return Promise.reject(this.ACTION_WITH_DISCONNECTED_DB_ERROR);
-		
+
 		return new Promise((resolve, reject) => {
 			Model.VideoConsumer.find((err, consumers) => {
-				if (err)
-					reject(err); // И СЮДА!
-					
+				if (err) {
+					logger.error('An error occurred while getting registered video consumer.', err);
+					reject(err);
+				}
+
 				resolve(consumers);
 			})
 		});
@@ -116,7 +141,7 @@ class KurentoHubDb {
 	registerVideoConsumer(): Promise<Storage.IVideoConsumer> {
 		if (this.state != DbState.Connected)
 			return Promise.reject(this.ACTION_WITH_DISCONNECTED_DB_ERROR);
-		
+
 		var videoConsumera: Storage.IVideoConsumer = {
 			clientId: '',
 			registerTime: new Date(),
@@ -130,15 +155,17 @@ class KurentoHubDb {
 
 		return new Promise((resolve, reject) => {
 			videoConsumer.save((err) => {
-				if (err)
-					reject(err); // И СЮДА!
-				
+				if (err) {
+					logger.error('An error occurred while registing video consumer.', err);
+					reject(err);
+				}
+
 				videoConsumer.clientId = videoConsumer.id;
 				resolve(<Storage.IVideoConsumer>videoConsumer);
 			})
 		});
 	}
-	
+
 }
 
 export = new KurentoHubDb();

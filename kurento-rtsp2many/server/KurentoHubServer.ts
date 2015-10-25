@@ -10,7 +10,6 @@ import WampWebTransportConfiguration = require('./Wamp/Transport/WampWebTranspor
 import WampRouterConnectionManager = require('./WampRouterConnectionManager');
 import WampCredentials = require('./WampCredentials');
 import WampCraCredentials = require('./WampCraCredentials');
-import KurentoHubDb = require('./Storage/KurentoHubDb');
 
 
 import VideoConnectionsManager = require('./VideoConnectionsManager');
@@ -26,9 +25,9 @@ class KurentoHubServer {
 
     private connectionManager: WampRouterConnectionManager;
     private videoManager: VideoConnectionsManager;
-    private db: KurentoHubDb;
+    private db;
 
-    constructor(db: KurentoHubDb) {
+    constructor(db) {
         this.db = db;
         this.videoManager = new VideoConnectionsManager(db, <any>logger);
     }

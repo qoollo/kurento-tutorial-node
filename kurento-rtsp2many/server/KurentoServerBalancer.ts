@@ -4,7 +4,7 @@ import KurentoServer = require('./KurentoServer');
 
 class KurentoServerBalancer {
 
-	constructor(private logger: Console, private _db: KurentoHubDb) {
+	constructor(private logger: Console, private _db) {
 
 	}
 

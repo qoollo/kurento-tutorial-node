@@ -17,7 +17,7 @@ class KurentoHeartbeatMonitor{
 				private interval: number,
 				private kurentoWatcher: IKurentoWatcher){				
 		this.monitApi = new MonitApiClient();
-		this.db = new KurentoHubDb();
+		KurentoHubDb.connect().then(() => {this.db = KurentoHubDb});
 		timer.setInterval(this.timerCallback, interval);
 		logger.log('info',`[KurentoHeartbeatMonitor] was started`)	
 	}
@@ -124,7 +124,7 @@ class KurentoHeartbeatMonitor{
 	}
 	
 	private monitApi: MonitApiClient;
-	private db: KurentoHubDb;
+	private db;
 	private startedMonits: Monit[];	
 	public onStatus: (status:KurentoStatus) => void;
 	public onOnline: (status:KurentoStatus) => void;

@@ -10,7 +10,7 @@ class VideoConnectionsManager {
 	private serverBalancer: KurentoServerBalancer;
 	private kurentoServers: Promise<KurentoServer[]>;
 
-	constructor(private db: KurentoHubDb, private logger: Console) {
+	constructor(private db, private logger: Console) {
 		this.serverBalancer = new KurentoServerBalancer(this.logger, this.db);
 		this.kurentoServers = this.getKurentoServers();
 	}
