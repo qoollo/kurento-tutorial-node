@@ -166,6 +166,38 @@ class KurentoHubDb {
 		});
 	}
 
+	saveMonit(monit : Monitor.IMonit) : Promise<any> {
+		if (this.state != DbState.Connected)
+			return Promise.reject(this.ACTION_WITH_DISCONNECTED_DB_ERROR);
+			
+		return new Promise((resolve, reject) => {
+			new Model.Monit(monit).save((err, newMonit) => {
+				if (err) {
+					logger.error('An error occurred while saving monit.', err);
+					reject(err);
+				}
+
+				resolve(monit);
+			})
+		});
+	}
+	
+	getLastMonitUrl() : Promise<Monitor.IMonitUrl> {
+		if (this.state != DbState.Connected)
+			return Promise.reject(this.ACTION_WITH_DISCONNECTED_DB_ERROR);
+			
+		return new Promise((resolve, reject) => {
+			Model.Monit.find({},null, {limit: 1, sort: {'currentStatus.time': -1}},(err, monits) => {
+				if (err) {
+					logger.error('An error occurred while getting last monit url.', err);
+					reject(err);
+				}
+
+				resolve(monits[0] && monits[0].url);
+			})
+		});
+	}
+	
 }
 
 export = new KurentoHubDb();

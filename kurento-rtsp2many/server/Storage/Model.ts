@@ -28,6 +28,23 @@ var kurentoServerSchema: mongoose.Schema = new mongoose.Schema({
 });
 
 var monitSchema: mongoose.Schema = new mongoose.Schema({
+	url : {
+		monitUrl: {
+			href: String,
+        	protocol: String,
+        	auth: String,
+ 	        hostname: String,
+    	    port: String,
+        	host: String,
+	        pathname: String,
+    	    search: String,
+        	//query: // string | Object //Type "object"" can not be in the database
+	        slashes: Boolean,
+    	    hash: String,
+        	path: String,
+		}
+	},
+	
 	currentStatus: {
 		state: Number,
 		status: Number,

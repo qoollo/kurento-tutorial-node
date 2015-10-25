@@ -1,5 +1,6 @@
 import MonitState = require('./MonitApi/MonitState');
 import KurentoEventState = require('./KurentoStatus/KurentoEventState');
+import url = require('url');
 
 declare module Monitor {
 	
@@ -12,7 +13,12 @@ declare module Monitor {
 			cpu : number;	
 	}
 	
+	interface IMonitUrl {
+		monitUrl: url.Url;
+	}
+	
 	interface IMonit {
+		url : IMonitUrl
 		currentStatus: IKurentoStatus;
 	}
 }
