@@ -13,6 +13,7 @@
  *
  */
 
+import logger = require('./Logger');
 checkPromisesSupport();
 
 import express = require('express');
@@ -21,19 +22,24 @@ import readline = require('readline');
 import path = require('path');
 
 import cfg = require('./AppConfig');
-import logger = require('./Logger');
 import KurentoHubServer = require('./KurentoHubServer');
-import KurentoHubDb = require('./Storage/KurentoHubDb');
+import DbProvider = require('./Storage/KurentoHubDbProvider');
 
 
 logger.info('KurentoHub initializing....');
 
 var app = express(),
-    db = new KurentoHubDb(),
-    kurentoHubServer = new KurentoHubServer(db);
-db.seedData()
-    .then(() => kurentoHubServer.start())
-    .then(() => logger.info('KurentoHub started.'));
+    db = null,
+    kurentoHubServer: KurentoHubServer;
+    
+DbProvider.get()
+    .then((database) => {
+        db = database;
+        db.seedData();
+        return db;
+    })
+    .then(db => kurentoHubServer = new KurentoHubServer(db))
+    .then(kurentoHubServer => kurentoHubServer.start());
 
 handleCtrlC();
 
@@ -56,7 +62,7 @@ var testMode = false,
     }];
 
 app.get('/api/streams', (req, res) => {
-    logger.debug('GET /api/streams');
+    logger.debug('[GET   ] /api/streams');
     if (testMode) {
         res.send(testConnections);
         return;
@@ -68,7 +74,7 @@ app.get('/api/streams', (req, res) => {
         .catch(err => res.status(500).send(err));
 });
 app.delete('/api/streams', (req, res) => {
-    logger.debug('DELETE /api/delete');
+    logger.debug('[DELETE] /api/delete ' + req.body.streamUrl);
     if (testMode) {
         var match = testConnections.filter(c => c.streamUrl == req.body.streamUrl)[0];
         if (match) { 
@@ -81,7 +87,7 @@ app.delete('/api/streams', (req, res) => {
     kurentoHubServer
         .videoConnections
         .killStream(req.body.streamUrl)
-        .then(() => res.send(200), err => res.status(500).send(err))
+        .then(() => res.sendStatus(200), err => res.status(500).send(err))
 });
 /*
 app.all('*', (req, res, next) => {

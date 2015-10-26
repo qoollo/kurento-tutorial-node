@@ -1,8 +1,9 @@
 import MonitStatus = require('../MonitApi/MonitStatus');
 import MonitState = require('../MonitApi/MonitState');
 import KurentoEventState = require('./KurentoEventState');
+import Monitor = require('../Monitor');
 
-class KurentoStatus{
+class KurentoStatus implements Monitor.IKurentoStatus{
 	constructor(monitStatus: MonitStatus){		
 		this.eventState = KurentoEventState.Unknown;
 		this.time = new Date();

@@ -11,7 +11,7 @@
             "isBuildCommand": true,
             "showOutput": "always",
             "isWatching": true,
-            "problemMatcher": "$gulp-tsc"
+            "problemMatcher": "$tsc"
         }
     ]
 }

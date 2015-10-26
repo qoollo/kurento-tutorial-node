@@ -1,10 +1,9 @@
-
-import KurentoHubDb = require('./Storage/KurentoHubDb');
+import KurentoHubDb = require('./Storage/IKurentoHubStorage');
 import KurentoServer = require('./KurentoServer');
 
 class KurentoServerBalancer {
 
-	constructor(private logger: Console, private _db: KurentoHubDb) {
+	constructor(private logger: Console, private _db : KurentoHubDb.IKurentoHubStorage) {
 
 	}
 
@@ -14,9 +13,9 @@ class KurentoServerBalancer {
 			this.logger.error(err);
 			throw new Error(err);
 		}
-		var res: KurentoServer = servers.filter(s => s.streamUrls.some(u => u == streamUrl))[0];
+		var res: KurentoServer = servers.filter(s => s.getVideoConnections().some(c => c.player.streamUrl == streamUrl))[0];
 		if (!res)
-			res = servers.sort((a, b) => a.streamUrls.length - b.streamUrls.length)[0];
+			res = servers.sort((a, b) => a.getVideoConnections().length - b.getVideoConnections().length)[0];
 		return Promise.resolve(res);
 	}
 
@@ -46,7 +45,7 @@ class KurentoServerBalancer {
 		var res: Storage.IKurentoServer = null,
 			match = connections.filter(c => c.streamUrl == streamUrl)[0];
 		if (match)
-			res = servers.filter(s => s._id == match.kurentoServer_id)[0];
+			res = servers.filter(s => s.__id == match.kurentoServerId)[0];
 		return res;
 	}
 
@@ -56,7 +55,7 @@ class KurentoServerBalancer {
 			server: Storage.IKurentoServer,
 			streams: number
 		}[] = servers.map(s => { return { server: s, streams: 0 } });
-		connections.forEach(c => loads.filter(l => l.server._id == c.kurentoServer_id)[0].streams++);
+		connections.forEach(c => loads.filter(l => l.server.__id == c.kurentoServerId)[0].streams++);
 		loads.sort((a, b) => a.streams - b.streams);
 		return loads[0].server;
 	}

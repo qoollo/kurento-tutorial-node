@@ -9,13 +9,21 @@ declare module Protocol {
     }
 
     interface IClientId {
-        clientId: number;
+        clientId: string;
     }
 
     interface IConnectToStreamResponse {
         clientId: IClientId;
         streamUrl: string;
         sdpAnswer: string;
+    }
+    
+    interface IStreamsToRunChangedEventArgs {
+        StreamsToRun: IVideoStream[]
+    }
+    
+    interface IVideoStream {
+        Url: string;
     }
 
 }

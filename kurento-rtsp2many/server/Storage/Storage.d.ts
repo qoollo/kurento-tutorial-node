@@ -8,12 +8,12 @@ declare module Storage {
 	
 	interface IStreamConnection {
 		streamUrl: string;
-		kurentoServer_id: string;
+		kurentoServerId: string;
 		connectTime: Date;
 	}
 	
 	interface IKurentoServer {
-		_id: string;
+		__id: string;
 		url: string;
 	}
 }
