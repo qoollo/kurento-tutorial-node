@@ -1,3 +1,5 @@
+@ECHO OFF
+
 set mongoPath="C:\Program Files\MongoDB\Server\3.0\bin"
 set mongoDbPath=C:\MongoDb
 set logDir=log
