@@ -47,7 +47,7 @@ class KurentoHeartbeatMonitor{
 				return this.kurentoAnaliser.analise(dbStatus,mStatus);
 			})
 			.then((status: KurentoStatus) => {
-				return this.setKurentoStatus(status);				
+				return this.setKurentoStatus(monit, status);				
 			})
 			.then((status:KurentoStatus) => {
 				this.raiseKurentoStatus(status);	
@@ -60,11 +60,8 @@ class KurentoHeartbeatMonitor{
 	}
 	
 
-	private setKurentoStatus(status: KurentoStatus):Promise<KurentoStatus>{	
-		return new Promise((resolve, reject) =>{
-			//db
-			resolve(status);
-		});
+	private setKurentoStatus(monit: Monit, status: KurentoStatus):Promise<KurentoStatus>{	
+		return this.db.saveMonit(new Monit(monit.url, status));
 	}
 	
 	
