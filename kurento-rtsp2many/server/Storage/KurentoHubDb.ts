@@ -5,8 +5,9 @@ import Monitor = require('../KurentoMonitor/Monitor');
 import Model = require('./Model');
 import Document = require('./Document.ts');
 import DbState = require('./DbState');
+import KhStorage = require('./IKurentoHubStorage');
 
-class KurentoHubDb {
+class KurentoHubDb implements KhStorage.IKurentoHubStorage {
 
 	private ACTION_WITH_DISCONNECTED_DB_ERROR = 'No connection to the database.';
 
