@@ -8,7 +8,6 @@ import KurentoEventState = require('./KurentoStatus/KurentoEventState');
 class KurentoStatusAnaliser {
 		
 	constructor(){
-
 		this.defaultStateMachine = this.generateDefaultStateMachine();		
 	}
 
