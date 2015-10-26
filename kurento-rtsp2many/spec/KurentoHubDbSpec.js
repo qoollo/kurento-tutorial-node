@@ -1,7 +1,7 @@
-var KurentoHubDb = require('../server/Storage/KurentoHubDb');
+var KhStorage = require('../server/Storage/IKurentoHubStorage');
 describe('KurentoHubDb', function () {
     it('Should initialize', function () {
-        var db = KurentoHubDb;
+        var db = KhStorage;
     });
 });
 

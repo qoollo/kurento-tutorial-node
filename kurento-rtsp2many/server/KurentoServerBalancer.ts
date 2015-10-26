@@ -1,10 +1,9 @@
-
-import KurentoHubDb = require('./Storage/KurentoHubDb');
+import KurentoHubDb = require('./Storage/IKurentoHubStorage');
 import KurentoServer = require('./KurentoServer');
 
 class KurentoServerBalancer {
 
-	constructor(private logger: Console, private _db) {
+	constructor(private logger: Console, private _db : KurentoHubDb.IKurentoHubStorage) {
 
 	}
 

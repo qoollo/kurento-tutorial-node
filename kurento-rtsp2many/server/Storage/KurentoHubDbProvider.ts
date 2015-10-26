@@ -1,14 +1,26 @@
-import Db = require('./KurentoHubDb');
+import Db = require('./Mongo/KurentoMongoDb');
+import KhStorage = require('./IKurentoHubStorage')
 
-export = {
-	get : () => {
-		return new Promise((resolve, reject) => {
-			Db.connect()
-			  .then(() => {
-				  resolve(Db)
-			  }, (err) => {
-				  reject(err)
-			  });
-		})
+class KurentoHubProvider {
+
+	private lastGetPromise: Promise<KhStorage.IKurentoHubStorage>
+
+	constructor() {
+
+	}
+
+	get(): Promise<KhStorage.IKurentoHubStorage> {
+		if (!this.lastGetPromise)
+			this.lastGetPromise = new Promise((resolve, reject) => {
+				Db.connect().then(() => {
+					resolve(Db)
+				}, (err) => {
+					reject(err)
+				});
+			})
+		
+		return this.lastGetPromise;
 	}
 }
+
+export = new KurentoHubProvider();

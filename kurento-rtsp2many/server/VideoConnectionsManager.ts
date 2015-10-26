@@ -1,5 +1,5 @@
 
-import KurentoHubDb = require('./Storage/KurentoHubDb');
+import KurentoHubDb = require('./Storage/IKurentoHubStorage');
 import KurentoServerBalancer = require('./KurentoServerBalancer');
 import KurentoServer = require('./KurentoServer');
 import KurentoPlayer = require('./KurentoPlayer');
@@ -11,7 +11,7 @@ class VideoConnectionsManager {
 	private serverBalancer: KurentoServerBalancer;
 	private kurentoServers: Promise<KurentoServer[]>;
 
-	constructor(private db, private logger: Console) {
+	constructor(private db: KurentoHubDb.IKurentoHubStorage, private logger: Console) {
 		this.serverBalancer = new KurentoServerBalancer(this.logger, this.db);
 		this.kurentoServers = this.getKurentoServers();
 	}

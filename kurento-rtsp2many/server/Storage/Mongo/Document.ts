@@ -1,5 +1,5 @@
 import mongoose = require('mongoose');
-import Monitor = require('../KurentoMonitor/Monitor');
+import Monitor = require('../../KurentoMonitor/Monitor');
 
 declare module Document {
 	

@@ -1,10 +1,9 @@
-
-import KurentoHubDb = require('../server/Storage/KurentoHubDb')
+import KhStorage = require('../server/Storage/IKurentoHubStorage');
 
 describe('KurentoHubDb', () => {
 	
 	it('Should initialize', () => {
-		var db = KurentoHubDb;
+		var db = KhStorage;
 	})
 	
 });

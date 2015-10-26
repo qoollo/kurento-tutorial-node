@@ -1,13 +1,14 @@
 import logger = require('../Logger');
 import MonitUrl = require('./Monit/MonitUrl');
 import KurentoStatus = require('./KurentoStatus/KurentoStatus');
-import KurentoHubDb = require('../Storage/KurentoHubDb');
+import KurentoHubDb = require('../Storage/IKurentoHubStorage');
 import MonitApiClient = require('./MonitApi/MonitApiCLient');
 import Monit = require('./Monit/Monit');
 import MonitStatus = require('./MonitApi/MonitStatus');
 import MonitState = require('./MonitApi/MonitState');
 import KurentoEventState = require('./KurentoStatus/KurentoEventState');
 import IKurentoWatcher = require("./IKurentoWatcher/IKurentoWatcher");
+import KurentoHubDbProvider = require('../Storage/KurentoHubDbProvider');
 /*  
  *	Class to monitoring Kurentos by theirs Monits
  *  Get state for each kurento, generate event and write it to db. 
@@ -17,7 +18,7 @@ class KurentoHeartbeatMonitor{
 				private interval: number,
 				private kurentoWatcher: IKurentoWatcher){				
 		this.monitApi = new MonitApiClient();
-		KurentoHubDb.connect().then(() => {this.db = KurentoHubDb});
+		KurentoHubDbProvider.get().then((db) => {this.db = db});
 		timer.setInterval(this.timerCallback, interval);
 		logger.log('info',`[KurentoHeartbeatMonitor] was started`)	
 	}
@@ -124,7 +125,7 @@ class KurentoHeartbeatMonitor{
 	}
 	
 	private monitApi: MonitApiClient;
-	private db;
+	private db : KurentoHubDb.IKurentoHubStorage;
 	private startedMonits: Monit[];	
 	public onStatus: (status:KurentoStatus) => void;
 	public onOnline: (status:KurentoStatus) => void;

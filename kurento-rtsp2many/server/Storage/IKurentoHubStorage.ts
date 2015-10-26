@@ -1,6 +1,9 @@
 import Monitor = require('../KurentoMonitor/Monitor');
+import DbState = require('./DbState');
 
 export interface IKurentoHubStorage {
+	
+	state: DbState;
 	
 	seedData(): Promise<any>
 	

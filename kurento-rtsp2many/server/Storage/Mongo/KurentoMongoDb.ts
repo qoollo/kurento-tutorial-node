@@ -1,13 +1,13 @@
-import AppConfig = require('../AppConfig');
+import AppConfig = require('../../AppConfig');
 import mongoose = require('mongoose');
-import logger = require('../Logger');
-import Monitor = require('../KurentoMonitor/Monitor');
+import logger = require('../../Logger');
+import Monitor = require('../../KurentoMonitor/Monitor');
 import Model = require('./Model');
 import Document = require('./Document.ts');
-import DbState = require('./DbState');
-import KhStorage = require('./IKurentoHubStorage');
+import DbState = require('./../DbState');
+import KhStorage = require('./../IKurentoHubStorage');
 
-class KurentoHubDb implements KhStorage.IKurentoHubStorage {
+class KurentoMongoDb implements KhStorage.IKurentoHubStorage {
 
 	private ACTION_WITH_DISCONNECTED_DB_ERROR = 'No connection to the database.';
 
@@ -201,4 +201,4 @@ class KurentoHubDb implements KhStorage.IKurentoHubStorage {
 	
 }
 
-export = new KurentoHubDb();
+export = new KurentoMongoDb();
