@@ -30,18 +30,16 @@ logger.info('KurentoHub initializing....');
 
 var app = express(),
     db = null,
-    kurentoHubServer = new KurentoHubServer(db);
-
+    kurentoHubServer: KurentoHubServer;
+    
 DbProvider.get()
     .then((database) => {
         db = database;
         db.seedData();
-    }).then(() => kurentoHubServer.start())
-    .then(() => logger.info('KurentoHub started.'))
-    //.then(() => kurentoHubServer.getStreamsToRun())
-    //.then(streams => {
-    //    debugger;
-    //});
+        return db;
+    })
+    .then(db => kurentoHubServer = new KurentoHubServer(db))
+    .then(kurentoHubServer => kurentoHubServer.start());
 
 handleCtrlC();
 

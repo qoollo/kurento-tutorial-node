@@ -22,11 +22,15 @@ class KurentoServer {
 		var match = this._players.filter(p => p.streamUrl == streamUrl)[0];
 		if (!match)
 			return Promise.reject(`Stream not found: KurentoServer "${this.kurentoUrl}" does not run stream "${streamUrl}".`);
-		if (match.status == PlayerStatus.Disposed)
+			
+		return this.killPlayer(match);
+	}
+	public killPlayer(player: KurentoPlayer): Promise<any> {
+		if (player.status == PlayerStatus.Disposed)
 			return Promise.resolve(`Stream kill has already been initiated.`);
 
-		return match.dispose()
-			.then(() => this._players.splice(this._players.indexOf(match), 1));
+		return player.dispose()
+			.then(() => this._players.splice(this._players.indexOf(player), 1));
 	}
 
 	public getClient(callback: IGetClientCallback): void {
@@ -84,6 +88,10 @@ class KurentoServer {
 		return this._players;
 	}
 	private _players: KurentoPlayer[] = [];
+
+	public playVideo(streamUrl: string): Promise<KurentoPlayer> {
+		return this.getPlayer(streamUrl);
+	}
 
 	public addVideoConnection(client: Storage.IVideoConsumer, sdpOffer: string, streamUrl: string): Promise<VideoConnection> {
 		return new Promise((resolve, reject) => {

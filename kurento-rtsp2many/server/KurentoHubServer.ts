@@ -38,13 +38,22 @@ class KurentoHubServer {
             .then(url => this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', new WampCraCredentials('KurentoHub', 'secret2'), logger))
             .then(m => m.start())
             .then(s => {
-                this.registerRpcs(s);
-                this.subscribeEvents(s)
-            });
+                return Promise.all<any>([
+                    this.registerRpcs(s),
+                    this.subscribeEvents(s)
+                ]);
+            })
+            .then(() => this.onServerStarted());
     }
 
     stop(): Promise<void> {
         return this.connectionManager.stop();
+    }
+    
+    private onServerStarted(): void {
+        logger.info('KurentoHub started.', { 'class': 'KurentoHubServer', 'method': 'onServerStarted' });
+        this.getStreamsToRun()
+            .then(streams => this.videoConnections.syncStreams(streams));
     }
 
     public get state(): ConnectionState {
@@ -88,13 +97,20 @@ class KurentoHubServer {
      */
     private onStreamsToRunChanged(streamsToRun: Protocol.IStreamsToRunChangedEventArgs): void {
         logger.debug('Remote Event published: StreamsToRunChanged');
-        debugger;
+        this.videoConnections.syncStreams(streamsToRun.StreamsToRun);
+            //.then(() => logger.info('Streams sync complete.', { 'class': 'KurentoHubServer', 'method': 'onStreamsToRunChanged' }))
+            //.catch(err => logger.error('Streams sync failed.', { 'class': 'KurentoHubServer', 'method': 'onStreamsToRunChanged', 'error': err }))
     }
     
-    public getStreamsToRun(): Promise<Protocol.IVideoStream> {
+    public getStreamsToRun(): Promise<Protocol.IVideoStream[]> {
         logger.info('RPC call: getStreamsToRun', { 'class': 'KurentoHubServer', 'method': 'getStreamsToRun' })
         var res = this.connectionManager.session.call(KurentoHubRpcNames.getStreamsToRun);
-        res.catch(err => logger.error('RPC getStreamsToRun call error. ' + err, { 'class': 'KurentoHubServer', 'method': 'getStreamsToRun', 'error': err }));
+        res.catch(err => {
+            if (this.connectionManager.isNoSuchProcedureError(err))
+                logger.info('RPC getStreamsToRun call failed: no such RPC registered. SystemController is offline.');
+            else
+                logger.error('RPC getStreamsToRun call error. ' + err, { 'class': 'KurentoHubServer', 'method': 'getStreamsToRun', 'error': err });
+        });
         return res;
     }
 
