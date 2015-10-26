@@ -42,6 +42,17 @@ var configFilePath = path.join(path.dirname(require.main.filename), 'KurentoHub.
         }
     },
     actualConfig = defaultConfig;
+<<<<<<< HEAD
+    
+if (fs.existsSync(configFilePath)) 
+    actualConfig = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+else
+    fs.writeFileSync(configFilePath, JSON.stringify(defaultConfig, null, 4), { encoding: 'utf8' });
+
+function configFileExists(): boolean {
+    return fs.existsSync(configFilePath);
+    }
+=======
 
 class AppConfigProvider {
 
@@ -69,6 +80,7 @@ class AppConfigProvider {
         }
     }
 
-    }
+}
+>>>>>>> release/v0.1.0
 
 export var config = new AppConfigProvider();

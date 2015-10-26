@@ -31,8 +31,8 @@ class MonitApiClient {
 				var options = {
 					host: url.monitUrl.hostname,
 					port: url.monitUrl.port,
-					path: AppConfig.config.monit.txtPath,
-					auth: AppConfig.config.monit.login + ':' + AppConfig.config.monit.password
+					path: AppConfig.config.get().monit.txtPath,
+					auth: AppConfig.config.get().monit.login + ':' + AppConfig.config.get().monit.password
 				};
 				
 				var getResponse = http.get(options, response => {
@@ -73,8 +73,8 @@ class MonitApiClient {
 				var options = {
 					host: url.monitUrl.hostname,
 					port: url.monitUrl.port,
-					path: AppConfig.config.monit.xmlPath,
-					auth: AppConfig.config.monit.login + ':' + AppConfig.config.monit.password
+					path: AppConfig.config.get().monit.xmlPath,
+					auth: AppConfig.config.get().monit.login + ':' + AppConfig.config.get().monit.password
 				};
 				var monitStatus: MonitStatus;
 				

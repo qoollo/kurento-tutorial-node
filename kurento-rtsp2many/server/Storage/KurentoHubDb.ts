@@ -26,7 +26,7 @@ class KurentoHubDb {
 				logger.info("Creating new connection to KurentoDb.");
 
 				this.state = DbState.Connecting;
-				mongoose.connect(AppConfig.config.mongodb.uri);
+				mongoose.connect(AppConfig.config.get().mongodb.uri);
 
 				var db = mongoose.connection;
 
@@ -61,8 +61,8 @@ class KurentoHubDb {
 			var savePromises = [],
 				errors = [];
 
-            AppConfig.config.kurentoMediaServer.defaultInstances.forEach((e, i) => {
-                var template = AppConfig.config.kurentoMediaServer.wsUrlTemplate,
+            AppConfig.config.get().kurentoMediaServer.defaultInstances.forEach((e, i) => {
+                var template = AppConfig.config.get().kurentoMediaServer.wsUrlTemplate,
                     getAddress = srv => {
                         var res = template;
                         for (var f in srv) {

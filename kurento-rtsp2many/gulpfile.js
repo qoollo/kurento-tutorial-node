@@ -16,6 +16,7 @@ var tsProject = ts.createProject('tsconfig.json');
 gulp.task('default', ['npm-install', 'build-server', 'build-client', 'build-tests'], function () {
 	gulp.watch('server/**/*.ts', ['build-server']);
 	gulp.watch('web/**/*.ts', ['build-client']);
+	gulp.watch('spec/**/*.ts', ['build-server']);
 	gulp.watch('tests/**/*.ts', ['build-tests']);
 });
 

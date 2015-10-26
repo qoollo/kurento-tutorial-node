@@ -1,4 +1,4 @@
-﻿/// <reference path="Protocol/RpcResponses.d.ts" />
+﻿/// <reference path="Protocol/Protocol.d.ts" />
 
 import logger = require('./Logger');
 import AppConfig = require('./AppConfig');
@@ -37,7 +37,10 @@ class KurentoHubServer {
             .getKurentoHubUrl()
             .then(url => this.connectionManager = new WampRouterConnectionManager(url, 'AquaMedKurentoInteraction', new WampCraCredentials('KurentoHub', 'secret2'), logger))
             .then(m => m.start())
-            .then(s => this.registerRpcs(s));
+            .then(s => {
+                this.registerRpcs(s);
+                this.subscribeEvents(s)
+            });
     }
 
     stop(): Promise<void> {
@@ -66,12 +69,47 @@ class KurentoHubServer {
         });
         return res;
     }
-
-    private getVersion(): Promise<Protocol.IKurentoHubVersion> {
-        logger.debug('RPC called: getVersion');
-        return Promise.resolve(AppConfig.config.version);
+    private subscribeEvents(session: autobahn.Session): Promise<autobahn.ISubscription[]> {
+        var res = Promise.all([
+            session.subscribe('com.kurentoHub.onstreamstorunchanged', (args) => this.onStreamsToRunChanged(args[0]))
+        ]);
+        res.then(subscriptions =>
+            subscriptions.forEach(s => logger.debug('KurentoHubServer subscribed for Event: ' + s.topic)));
+        res.catch(err => {
+            logger.error('KurentoHubServer failed to subscribe for Events.', err);
+            Promise.reject(err);
+        });
+        return res;
+    }
+    
+    /**
+     * StreamsToRunChanged event listener. StreamsToRunChanged event is produced by SystemController
+     * when something changes: stream is created or removed.
+     */
+    private onStreamsToRunChanged(streamsToRun: Protocol.IStreamsToRunChangedEventArgs): void {
+        logger.debug('Remote Event published: StreamsToRunChanged');
+        debugger;
+    }
+    
+    public getStreamsToRun(): Promise<Protocol.IVideoStream> {
+        logger.info('RPC call: getStreamsToRun', { 'class': 'KurentoHubServer', 'method': 'getStreamsToRun' })
+        var res = this.connectionManager.session.call(KurentoHubRpcNames.getStreamsToRun);
+        res.catch(err => logger.error('RPC getStreamsToRun call error. ' + err, { 'class': 'KurentoHubServer', 'method': 'getStreamsToRun', 'error': err }));
+        return res;
     }
 
+    /**
+     * Returns KurentoHub version. This is RPC getVersion implementation.
+     */
+    private getVersion(): Promise<Protocol.IKurentoHubVersion> {
+        logger.debug('RPC called: getVersion');
+        return Promise.resolve(AppConfig.config.get().version);
+    }
+
+    /**
+     * Registers client and returns ClientId. ClientId can be later used by VideoConsumer
+     * to connect to stream (RPC connectToStream). This is RPC register implementation.
+     */
     private register(): Promise<Protocol.IClientId> {
         logger.debug('RPC called: register');
         return this.db.registerVideoConsumer()
@@ -84,6 +122,9 @@ class KurentoHubServer {
             })
     }
 
+    /**
+     * Connects VideoConsumer to stream. This is RPC connectToStream implementation. 
+     */
     private connectToStream(client: Protocol.IClientId, streamUrl: string, sdpOffer: string): Promise<Protocol.IConnectToStreamResponse> {
         logger.debug('RPC called: connectToStream');
         return this.db.getRegisteredVideoConsumers()

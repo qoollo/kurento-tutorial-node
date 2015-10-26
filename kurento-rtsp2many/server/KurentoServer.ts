@@ -15,28 +15,24 @@ class KurentoServer {
 		return this._kurentoUrl;
 	}
 
-	public get streamUrls(): string[] {
-		return this._streamUrls;
-	}
-	private _streamUrls: string[] = [];
-
 	public getVideoConnections(): VideoConnection[] {
-		return this._videoConnections.slice();
+		return this._players.map(p => p.videoConnections).reduce((p, c) => p.concat(c), <VideoConnection[]>[]);
 	}
-	public removeVideoConnection(streamUrl: string): Promise<any> {
-		var match = this._videoConnections.filter(c => c.player.streamUrl == streamUrl)[0];
+	public killVideoConnection(streamUrl: string): Promise<any> {
+		var match = this._players.filter(p => p.streamUrl == streamUrl)[0];
 		if (!match)
 			return Promise.reject(`Stream not found: KurentoServer "${this.kurentoUrl}" does not run stream "${streamUrl}".`);
-		
-		return match.player.dispose()
-			.then(() => this._videoConnections.splice(this._videoConnections.indexOf(match), 1));
+		if (match.status == PlayerStatus.Disposed)
+			return Promise.resolve(`Stream kill has already been initiated.`);
+
+		return match.dispose()
+			.then(() => this._players.splice(this._players.indexOf(match), 1));
 	}
-	private _videoConnections: VideoConnection[] = [];
 
 	public getClient(callback: IGetClientCallback): void {
 		if (this._client !== null)
 			return callback(null, this._client);
-			
+
 		this._clientCallbacks.push(callback);
 		this.logger.debug(`[KurentoServer.getClient()] creating KurentoClient...`);
 		new KurentoClient(this._kurentoUrl, (error, kurentoClient: Kurento.Client.IKurentoClient) => {
@@ -46,7 +42,7 @@ class KurentoServer {
 				this._clientCallbacks.forEach(c => c(msg))
 				return this._clientCallbacks.length = 0;
 			}
-			
+
 			this.logger.debug(`[KurentoServer.getClient()] KurentoClient created.`);
 			this._client = kurentoClient;
 			this._clientCallbacks.forEach(c => c(null, kurentoClient))
@@ -62,37 +58,44 @@ class KurentoServer {
 	}
 	private clientPromise: Promise<Kurento.Client.IKurentoClient> = null;
 
-	public getPlayer(streamUrl: string): Promise<KurentoPlayer> {
-		var player = this.players.filter(p => p.streamUrl == streamUrl)[0];
-		if (!player) {
+	private getPlayer(streamUrl: string): Promise<KurentoPlayer> {
+		var player = this._players.filter(p => p.streamUrl == streamUrl)[0];
+		if (!player || player.status == PlayerStatus.Disposed) {
 			this.logger.debug(`[KurentoServer.getPlayer()] creating new KurentoPlayer for stream ${streamUrl}.`)
 			player = new KurentoPlayer(this, streamUrl, this.logger);
-			this.players.push(player);
+			this._players.push(player);
 		}
 		if (player.status == PlayerStatus.Created)
 			return Promise.resolve(player);
 		else {
 			return new Promise((resolve, reject) => {
 				player.play(err => {
-					if (err)
+					if (err) {
+						this._players.splice(this._players.indexOf(player, 1));
 						return reject(err);
+					}
 					resolve(player);
 				});
 			})
 		}
 
 	}
-	private players: KurentoPlayer[] = [];
+	public get players(): KurentoPlayer[] {
+		return this._players;
+	}
+	private _players: KurentoPlayer[] = [];
 
-	public addVideoConnection(client: Storage.IVideoConsumer, sdpOffer: string, player: KurentoPlayer): Promise<VideoConnection> {
+	public addVideoConnection(client: Storage.IVideoConsumer, sdpOffer: string, streamUrl: string): Promise<VideoConnection> {
 		return new Promise((resolve, reject) => {
-			player.createVideoConnection(client, sdpOffer, (err, conn) => {
-				if (err)
-					return reject(err);
+			this.getPlayer(streamUrl)
+				.then(player => {
+					player.createVideoConnection(client, sdpOffer, (err, conn) => {
+						if (err)
+							return reject(err);
 
-				this._videoConnections.push(conn);
-				resolve(conn);
-			});
+						resolve(conn);
+					});
+				}, reject);
 		})
 	}
 

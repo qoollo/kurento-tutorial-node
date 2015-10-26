@@ -14,9 +14,9 @@ class KurentoServerBalancer {
 			this.logger.error(err);
 			throw new Error(err);
 		}
-		var res: KurentoServer = servers.filter(s => s.streamUrls.some(u => u == streamUrl))[0];
+		var res: KurentoServer = servers.filter(s => s.getVideoConnections().some(c => c.player.streamUrl == streamUrl))[0];
 		if (!res)
-			res = servers.sort((a, b) => a.streamUrls.length - b.streamUrls.length)[0];
+			res = servers.sort((a, b) => a.getVideoConnections().length - b.getVideoConnections().length)[0];
 		return Promise.resolve(res);
 	}
 
