@@ -11,6 +11,7 @@ $ npm install npm@3.3.7
 - install Visual Studio 2015
 - install [Node.js Tools for Visual Studio](https://www.visualstudio.com/features/node-js-vs)
 - install crossbar (see **Production** installation instructions)
+- deploy MongoDb (see **Deployment of MongoDb**)
 
 
 
@@ -25,3 +26,11 @@ $ npm install npm@3.3.7
 ```shell 
 $ pip install crossbar
 ```
+  - deploy MongoDb (see **Deployment of MongoDb**)
+
+
+
+## Deployment of MongoDb
+
+- install MongoDb (https://www.mongodb.org/)
+- launch **with administrator rights**: ./mongo installer/mongoInitializer.bat
