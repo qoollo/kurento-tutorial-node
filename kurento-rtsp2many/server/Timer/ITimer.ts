@@ -8,3 +8,6 @@ interface ITimer{
 	setInterval(callback: ()=>any, timeout: number,...args:any[]): void;
 	clearInterval():void;
 }
+
+
+export = ITimer;

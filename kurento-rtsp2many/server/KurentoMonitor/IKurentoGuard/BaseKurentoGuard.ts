@@ -1,4 +1,4 @@
-import IKurentoWatcher = require("./IKurentoWatcher");
+import IKurentoGuard = require("./IKurentoGuard");
 import KurentoStatus = require("../KurentoStatus/KurentoStatus");
 import Logger = require("../../Logger");
 
@@ -7,7 +7,7 @@ export enum WatcherEvent{
 	Alarm	
 }
 
-export abstract class BaseKurentoWatcher implements IKurentoWatcher{
+export abstract class BaseKurentoGuard implements IKurentoGuard{
 	constructor(protected logging: boolean = false, 
 				protected warn: (status: KurentoStatus) => any = null, 
 				protected alarm: (status: KurentoStatus) => any = null){

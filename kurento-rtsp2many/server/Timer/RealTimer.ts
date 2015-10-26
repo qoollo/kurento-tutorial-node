@@ -1,8 +1,9 @@
+import ITimer = require("./ITimer");
 /**
  * RealTimer - implementation of ITimer by NodeJS.Timer
  *  
  */
-class RealTimer{
+class RealTimer implements ITimer{
 	constructor(){
 		this.timeoutId = null;
 		this.intervalId = null;

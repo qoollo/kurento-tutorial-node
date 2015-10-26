@@ -1,9 +1,9 @@
-import IKurentoWatcher = require("./IKurentoWatcher");
+import IKurentoGuard = require("./IKurentoGuard");
 import KurentoStatus = require("../KurentoStatus/KurentoStatus");
 import Logger = require("../../Logger");
-import BaseKurentoWatcher = require("./BaseKurentoWatcher");
+import BaseKurentoGuard = require("./BaseKurentoGuard");
 
-class CpuKurentoWatcher extends  BaseKurentoWatcher.BaseKurentoWatcher{
+class CpuKurentoGuard extends  BaseKurentoGuard.BaseKurentoGuard{
 	public constructor(private cpuWarn:number, 
 					   private cpuAlarm: number, 
 					   warn: (status: KurentoStatus) => any, 
@@ -14,11 +14,11 @@ class CpuKurentoWatcher extends  BaseKurentoWatcher.BaseKurentoWatcher{
 	
 	public newStatus(status:KurentoStatus): void{
 		if(status.cpu > this.cpuAlarm){
-			this.onEvent(status, BaseKurentoWatcher.WatcherEvent.Alarm );
+			this.onEvent(status, BaseKurentoGuard.WatcherEvent.Alarm );
 			this.log(`cpu is HOT!Alarm! ${status.cpu}% > ${this.cpuAlarm}%`);
 		}
 		else if(status.cpu > this.cpuWarn){
-			this.onEvent(status, BaseKurentoWatcher.WatcherEvent.Warn );
+			this.onEvent(status, BaseKurentoGuard.WatcherEvent.Warn );
 			this.log(`cpu is more hot, than you want! Warning! ${status.cpu}% > ${this.cpuWarn}%`);
 		}
 		else{
@@ -28,4 +28,4 @@ class CpuKurentoWatcher extends  BaseKurentoWatcher.BaseKurentoWatcher{
 		
 }
 
-export = CpuKurentoWatcher;
+export = CpuKurentoGuard;

@@ -1,6 +1,6 @@
 import KurentoStatus = require("../KurentoStatus/KurentoStatus");
-interface IKurentoWatcher{
+interface IKurentoGuard{
 	newStatus(status:KurentoStatus): any;
 }
 
-export = IKurentoWatcher;
+export = IKurentoGuard;

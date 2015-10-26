@@ -1,9 +1,9 @@
-import IKurentoWatcher = require("./IKurentoWatcher");
+import IKurentoGuard = require("./IKurentoGuard");
 import KurentoStatus = require("../KurentoStatus/KurentoStatus");
 import Logger = require("../../Logger");
-import BaseKurentoWatcher = require("./BaseKurentoWatcher");
+import BaseKurentoGuard = require("./BaseKurentoGuard");
 
-class MemoryKurentoWatcher extends  BaseKurentoWatcher.BaseKurentoWatcher{
+class MemoryKurentoGuard extends  BaseKurentoGuard.BaseKurentoGuard{
 	public constructor(private memWarn:number, 
 					   private memAlarm: number, 
 					   warn: (status: KurentoStatus) => any, 
@@ -14,11 +14,11 @@ class MemoryKurentoWatcher extends  BaseKurentoWatcher.BaseKurentoWatcher{
 	
 	public newStatus(status:KurentoStatus): void{
 		if(status.memory > this.memAlarm){
-			this.onEvent(status, BaseKurentoWatcher.WatcherEvent.Alarm );
+			this.onEvent(status, BaseKurentoGuard.WatcherEvent.Alarm );
 			this.log(`memory is HOT!Alarm! ${status.memory}% > ${this.memAlarm}%`);
 		}
 		else if(status.memory > this.memWarn){
-			this.onEvent(status, BaseKurentoWatcher.WatcherEvent.Warn );
+			this.onEvent(status, BaseKurentoGuard.WatcherEvent.Warn );
 			this.log(`memory is more used, than you want! Warning! ${status.memory}% > ${this.memWarn}%`);
 		}
 		else{
@@ -28,4 +28,4 @@ class MemoryKurentoWatcher extends  BaseKurentoWatcher.BaseKurentoWatcher{
 		
 }
 
-export = MemoryKurentoWatcher
+export = MemoryKurentoGuard
