@@ -32,12 +32,7 @@ var app = express(),
     db = new KurentoHubDb(),
     kurentoHubServer = new KurentoHubServer(db);
 db.seedData()
-    .then(() => kurentoHubServer.start())
-    .then(() => logger.info('KurentoHub started.'))
-    //.then(() => kurentoHubServer.getStreamsToRun())
-    //.then(streams => {
-    //    debugger;
-    //});
+    .then(() => kurentoHubServer.start());
 
 handleCtrlC();
 

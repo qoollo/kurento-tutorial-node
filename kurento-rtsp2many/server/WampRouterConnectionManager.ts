@@ -74,6 +74,10 @@ class WampRouterConnectionManager {
     public get session(): autobahn.Session {
         return this._session;
     }
+    
+    public isNoSuchProcedureError(err: any): boolean {
+        return typeof err === 'object' && 'error' in err && err.error == 'wamp.error.no_such_procedure';
+    }
 
     private onConnectionOpened(session: autobahn.Session, details: any): void {
         this.logger.info('Connection to WAMP Router opened. Session id: %d', session.id);

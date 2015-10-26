@@ -15,22 +15,50 @@ class VideoConnectionsManager {
 		this.serverBalancer = new KurentoServerBalancer(this.logger, this.db);
 		this.kurentoServers = this.getKurentoServers();
 	}
-
-	public connectClientToStream(client: Storage.IVideoConsumer, sdpOffer: string, streamUrl: string): Promise<VideoConnection> {
+	
+	public syncStreams(streamsToRun: Protocol.IVideoStream[]): Promise<any> {
+		var meta = { 'class': 'VideoConnectionsManager', 'method': 'syncStreams' };
+		this.logger.info('Syncing streams...', meta)
+		var	res = this.getAllPlayers().then(players => {
+				var toKill = players.filter(p => !streamsToRun.some(s => s.Url == p.streamUrl)),
+					toCreate = streamsToRun.filter(s => !players.some(p => p.streamUrl == s.Url)),
+					killPromises = toKill.map(p => p.server.killPlayer(p)),
+					createPromises = toCreate.map(s => this.createVideo(s.Url)),
+					allPromises = killPromises.concat(createPromises);
+				
+				this.logger.debug(`Syncing streams: ${toKill.length} to kill, ${toCreate.length} to create, ${players.length - toKill.length - toCreate.length} unchanged.`, meta);
+				
+				return Promise.all(allPromises);
+			});
+		res.then(() => this.logger.info('Sync streams complete.', meta))
+			.catch(err => this.logger.error('Sync streams failed.', (meta['error'] = err, meta)));
+			
+		return res;
+	}
+	
+	public createVideo(streamUrl: string): Promise<KurentoPlayer> {
+		var meta = { 'class': 'VideoConnectionsManager', 'method': 'createVideoConnection' };
 		return this.kurentoServers
 			.then(servers => this.serverBalancer.getServerForStream(streamUrl, servers))
 			.then(server => {
-				this.logger.debug(`[VideoConnectionsManager.connectClientToStream()] Server ${server.kurentoUrl} will be used.`);
+				this.logger.debug(`Server ${server.kurentoUrl} will be used.`, meta);
+				return server.playVideo(streamUrl);
+			});
+	}
+
+	public connectClientToStream(client: Storage.IVideoConsumer, sdpOffer: string, streamUrl: string): Promise<VideoConnection> {
+		var meta = { 'class': 'VideoConnectionsManager', 'method': 'connectClientToStream' };
+		return this.kurentoServers
+			.then(servers => this.serverBalancer.getServerForStream(streamUrl, servers))
+			.then(server => {
+				this.logger.debug(`Server ${server.kurentoUrl} will be used.`, meta);
 				return server.addVideoConnection(client, sdpOffer, streamUrl);
 			});
 	}
 
 	public get runningStreams(): Promise<IVideoStream[]> {
-		return this.kurentoServers.then(servers =>
-			servers
-				.map(s => s.players)
-				.reduce((p, c) => p.concat(c), [])
-				.map(p => {
+		return this.getAllPlayers()
+			.then(players => players.map(p => {
 					return {
 						streamUrl: p.streamUrl,
 						kurentoServerUrl: p.server.kurentoUrl,
@@ -42,6 +70,14 @@ class VideoConnectionsManager {
 
 	public killStream(streamUrl): Promise<any> {
 		return this.kurentoServers.then(servers => Promise.all(servers.map(s => s.killVideoConnection(streamUrl))));
+	}
+	
+	private getAllPlayers(): Promise<KurentoPlayer[]> {
+		return this.kurentoServers
+			.then(servers => 
+				servers
+					.map(s => s.players)
+					.reduce((p, c) => p.concat(c), []));
 	}
 
 	private getKurentoServers(): Promise<KurentoServer[]> {
